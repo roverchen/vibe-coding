@@ -16,8 +16,25 @@
             display: inline-block; 
             cursor: crosshair; 
             border: 1px solid #ccc;
+            /* 讓容器預設有大小，防止圖片未載入時閃爍 */
+            min-height: 200px; 
+            min-width: 300px;
         }
-        #map-image { max-width: 100%; height: auto; display: block; }
+
+        /* 關鍵修正: 讓所有地圖圖片堆疊在 map-container 中，並控制顯示 */
+        .map-image { 
+            max-width: 100%; 
+            height: auto; 
+            display: none; /* 預設隱藏所有地圖 */
+            position: absolute; /* 堆疊 */
+            top: 0;
+            left: 0;
+        }
+        .map-image.active {
+            display: block; /* 僅顯示當前選中的地圖 */
+        }
+
+        /* 標記樣式保持不變，因為它們是 map-container 的子元素 */
         .marker {
             position: absolute;
             width: 16px;
@@ -35,6 +52,7 @@
             color: white;
             font-size: 10px;
             font-weight: bold;
+            z-index: 10; /* 確保標記在圖片上方 */
         }
         .marker:hover { background-color: #0056b3; }
         .marker-name {
@@ -113,12 +131,18 @@
             <div class="input-group">
                 <label for="map-select">選擇平面圖</label>
                 <select id="map-select">
-                    <option value="珊瑚王國館平面圖.jpg">珊瑚王國館平面圖</option>
+                    <option value="map-image1">台灣水域館平面圖</option>
+                    <option value="map-image2" selected>珊瑚王國館平面圖</option>
+                    <option value="map-image3">世界水域館1,2F平面圖</option>
+                    <option value="map-image4">世界水域館3F平面圖</option>
                 </select>
             </div>
 
             <div id="map-container">
-                <img id="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/aeee9399-5776-4dc9-bc34-74f3de9610ad.jpg" alt="平面圖">
+                <img id="map-image1" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg" alt="台灣水域館平面圖">
+                <img id="map-image2" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/aeee9399-5776-4dc9-bc34-74f3de9610ad.jpg" alt="珊瑚王國館平面圖">
+                <img id="map-image3" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/be3ac2e6-4910-4308-9c19-d797081ea4e1.jpg" alt="世界水域館1,2F平面圖">
+                <img id="map-image4" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/c7e10c76-a9aa-49ea-abe4-81066e8fd518.jpg" alt="世界水域館3F平面圖">
             </div>
 
             <div class="data-export-section">
@@ -140,7 +164,9 @@
         
         // --- DOM 元素快取 ---
         const mapContainer = document.getElementById('map-container');
-        const mapImage = document.getElementById('map-image');
+        // 修正：現在使用 document.querySelectorAll 獲取所有地圖圖片
+        const mapImages = document.querySelectorAll('.map-image'); 
+        const mapSelect = document.getElementById('map-select');
         const categorySelect = document.getElementById('visitor-category-select');
         const actionSelect = document.getElementById('action-select');
         const dataLog = document.getElementById('data-log');
@@ -151,13 +177,15 @@
 
         // --- 狀態變數 ---
         let locations = loadData(LOCATION_KEY);
-        let categories = loadData(CATEGORY_KEY, ['一般遊客', '學生團體', '年長者']); // 預設類別
-        let actions = loadData(ACTION_KEY, ['停留觀看', '快速移動', '使用手機', '互動體驗']); // 預設行為
+        let categories = loadData(CATEGORY_KEY, ['一般遊客', '學生團體', '年長者']); 
+        let actions = loadData(ACTION_KEY, ['停留觀看', '快速移動', '使用手機', '互動體驗']); 
         let logData = loadData(LOG_KEY);
 
+        let selectedMapID = mapSelect.value; // 當前選中的地圖ID (例如: map-image2)
         let selectedCategory = '';
         let selectedLocation = '';
         let selectedAction = '';
+        let currentActiveMapElement = null; // 當前顯示的地圖 DOM 元素
 
         // --- 輔助函數 ---
         function loadData(key, defaultData = []) {
@@ -174,7 +202,7 @@
             return Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2);
         }
 
-        // --- 1. 訪客分類操作步驟 ---
+        // --- 1. 訪客分類操作步驟 (不變) ---
         function initCategory() {
             populateSelect(categorySelect, categories);
             categorySelect.onchange = () => {
@@ -184,7 +212,7 @@
             };
             if (categories.length > 0) {
                 categorySelect.value = categories[0];
-                categorySelect.onchange(); // 觸發選擇第一個項目
+                categorySelect.onchange(); 
             }
         }
 
@@ -198,14 +226,13 @@
                 populateSelect(categorySelect, categories);
                 categorySelect.value = newName;
             }
-            // 選擇已有的或新加入的
             selectedCategory = categorySelect.value || newName;
             currentCategory.textContent = selectedCategory;
             input.value = '';
             checkRecordButtonStatus();
         }
 
-        // --- 3. 行為記錄操作步驟 (與分類類似) ---
+        // --- 3. 行為記錄操作步驟 (不變) ---
         function initAction() {
             populateSelect(actionSelect, actions);
             actionSelect.onchange = () => {
@@ -215,7 +242,7 @@
             };
             if (actions.length > 0) {
                 actionSelect.value = actions[0];
-                actionSelect.onchange(); // 觸發選擇第一個項目
+                actionSelect.onchange(); 
             }
         }
 
@@ -229,7 +256,6 @@
                 populateSelect(actionSelect, actions);
                 actionSelect.value = newName;
             }
-            // 選擇已有的或新加入的
             selectedAction = actionSelect.value || newName;
             currentAction.textContent = selectedAction;
             input.value = '';
@@ -247,14 +273,40 @@
             });
         }
 
-        // --- 2. 位置操作步驟 ---
+        // --- 2. 位置操作步驟 (新增地圖切換邏輯) ---
+
+        // 處理地圖切換
+        function switchMap() {
+            const newMapID = mapSelect.value;
+            selectedMapID = newMapID;
+            selectedLocation = ''; // 切換地圖時清除位置選擇
+            currentLocation.textContent = '未點擊';
+            checkRecordButtonStatus();
+
+            mapImages.forEach(img => {
+                img.classList.remove('active');
+                if (img.id === newMapID) {
+                    img.classList.add('active');
+                    currentActiveMapElement = img; // 更新當前活動的地圖元素
+                }
+            });
+
+            // 重新渲染當前地圖的標記
+            renderMarkers();
+        }
+        
+        // 渲染標記 (僅渲染當前地圖的標記)
         function renderMarkers() {
             // 清空舊的標記
             mapContainer.querySelectorAll('.marker').forEach(m => m.remove());
 
-            locations.forEach((loc, index) => {
+            // 僅篩選出當前地圖的標記
+            const currentMapMarkers = locations.filter(loc => loc.map === selectedMapID);
+
+            currentMapMarkers.forEach((loc, index) => {
                 const markerDiv = document.createElement('div');
                 markerDiv.className = 'marker';
+                // 標記座標相對於圖片容器
                 markerDiv.style.left = `${loc.x}px`;
                 markerDiv.style.top = `${loc.y}px`;
                 markerDiv.dataset.index = index;
@@ -269,16 +321,28 @@
             });
         }
 
+        // 地圖點擊事件處理
         mapContainer.addEventListener('click', (event) => {
-            const x = event.offsetX;
-            const y = event.offsetY;
+            // 確保點擊的是 map-container 且不是標記本身
+            if (!currentActiveMapElement || event.target.classList.contains('marker') || event.target.classList.contains('marker-name')) {
+                return;
+            }
+
+            // 計算相對於 map-container (也是圖片頂角) 的座標
+            const rect = mapContainer.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
             const thresholdSq = Math.pow(DISTANCE_THRESHOLD, 2);
 
             let foundLocation = null;
             let closestDistanceSq = Infinity;
+            
+            // 僅檢查當前地圖上的既有標記
+            const currentMapLocations = locations.filter(loc => loc.map === selectedMapID);
 
             // 檢查既有名稱之座標是否在該點擊座標方圓10px內
-            for (const loc of locations) {
+            for (const loc of currentMapLocations) {
                 const distSq = getDistanceSq(x, y, loc.x, loc.y);
                 if (distSq < closestDistanceSq) {
                     closestDistanceSq = distSq;
@@ -291,24 +355,26 @@
             if (foundLocation) {
                 // 如果是：開始行為記錄作業
                 selectedLocation = foundLocation.name;
-                alert(`已選擇位置：${selectedLocation}。請開始記錄行為。`);
+                // 為了更好的體驗，不需要每次都跳 Alert
+                // alert(`已選擇位置：${selectedLocation}。請開始記錄行為。`); 
             } else {
                 // 如果不是：為該點擊的座標命名
-                const newName = prompt(`您點擊的座標是 (X: ${x}, Y: ${y})。請為這個新位置命名：`);
+                const newName = prompt(`您點擊的座標是 (X: ${Math.round(x)}, Y: ${Math.round(y)})。請為這個新位置命名：`);
                 if (newName) {
                     const existingLoc = locations.find(loc => loc.name === newName);
                     if (existingLoc) {
-                         alert(`位置名稱 "${newName}" 已存在。請重新命名或點擊現有標記。`);
+                         alert(`位置名稱 "${newName}" 已存在於地圖 "${existingLoc.map}"。請重新命名或點擊現有標記。`);
                     } else {
-                        locations.push({ name: newName, x: x, y: y, map: document.getElementById('map-select').value });
+                        // 四捨五入座標
+                        locations.push({ name: newName, x: Math.round(x), y: Math.round(y), map: selectedMapID });
                         saveData(LOCATION_KEY, locations);
                         renderMarkers();
                         selectedLocation = newName;
                         alert(`已新增位置：${selectedLocation}`);
                     }
                 } else {
-                    selectedLocation = ''; // 清除位置
-                    alert('已取消命名，請重新點擊。');
+                    selectedLocation = ''; 
+                    // alert('已取消命名，請重新點擊。');
                 }
             }
 
@@ -316,7 +382,10 @@
             checkRecordButtonStatus();
         });
 
-        // --- 記錄與匯出 ---
+        // 監聽地圖選擇變化
+        mapSelect.addEventListener('change', switchMap);
+
+        // --- 記錄與匯出 (不變) ---
         function checkRecordButtonStatus() {
             const isReady = selectedCategory && selectedLocation && selectedAction;
             recordButton.disabled = !isReady;
@@ -333,22 +402,24 @@
             const now = new Date();
             const timestamp = now.toLocaleString('zh-TW', { hour12: false });
             
+            // 尋找當前位置的座標資訊
+            const locationData = locations.find(loc => loc.name === selectedLocation);
+
             const newLog = {
                 timestamp: timestamp,
                 category: selectedCategory,
                 location: selectedLocation,
                 action: selectedAction,
-                map: document.getElementById('map-select').value,
-                // 找到座標
-                coords: locations.find(loc => loc.name === selectedLocation) ? 
-                        `(${locations.find(loc => loc.name === selectedLocation).x}, ${locations.find(loc => loc.name === selectedLocation).y})` : 'N/A'
+                map: mapSelect.options[mapSelect.selectedIndex].text, // 記錄地圖的顯示名稱
+                // 記錄座標
+                coords: locationData ? `(${locationData.x}, ${locationData.y})` : 'N/A'
             };
 
-            logData.unshift(newLog); // 加到最前面
+            logData.unshift(newLog); 
             saveData(LOG_KEY, logData);
             renderLog();
             
-            alert(`記錄成功！\n[${timestamp}] ${newLog.category} 在 ${newLog.location} 執行 ${newLog.action}`);
+            // alert(`記錄成功！\n[${timestamp}] ${newLog.category} 在 ${newLog.location} 執行 ${newLog.action}`);
         }
 
         function renderLog() {
@@ -357,7 +428,7 @@
                 dataLog.innerHTML = '尚無記錄資料。';
                 return;
             }
-            logData.slice(0, 15).forEach(log => { // 顯示最新的 15 筆
+            logData.slice(0, 15).forEach(log => { 
                 const item = document.createElement('div');
                 item.className = 'log-item';
                 item.textContent = `[${log.timestamp}] ${log.category} | ${log.location} | ${log.action}`;
@@ -371,12 +442,9 @@
                 return;
             }
 
-            // CSV 標頭
             let csv = "時間,訪客分類,位置名稱,行為記錄,地圖,座標\n";
 
-            // 數據行
             logData.forEach(log => {
-                // 確保數據中如果含有逗號，會被雙引號包住
                 const row = [
                     `"${log.timestamp}"`,
                     `"${log.category}"`,
@@ -388,7 +456,6 @@
                 csv += row + "\n";
             });
 
-            // 建立 Blob 物件
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
@@ -405,14 +472,28 @@
         function initApp() {
             initCategory();
             initAction();
-            renderMarkers();
+            // 確保一開始切換到選中的地圖，並設定 currentActiveMapElement
+            switchMap(); 
             renderLog();
             checkRecordButtonStatus();
         }
 
-        // 確保圖片載入後再初始化，以獲得正確的座標計算
-        mapImage.onload = initApp;
-        if (mapImage.complete) {
+        // 確保所有圖片載入完成後才執行初始化
+        let loadedCount = 0;
+        const totalImages = mapImages.length;
+        mapImages.forEach(img => {
+            if (img.complete) {
+                loadedCount++;
+            } else {
+                img.onload = () => {
+                    loadedCount++;
+                    if (loadedCount === totalImages) {
+                        initApp();
+                    }
+                };
+            }
+        });
+        if (loadedCount === totalImages) {
             initApp();
         }
 
