@@ -157,276 +157,288 @@
     </div>
 
     <script>
-        // --- 設定 ---
-        const DISTANCE_THRESHOLD = 10; 
-        const CATEGORY_KEY = 'visitorCategories';
-        const ACTION_KEY = 'visitorActions';
-        const LOCATION_KEY = 'locationMarkers';
-        const LOG_KEY = 'behaviorLog';
-        
-        // --- DOM 元素快取 ---
-        const mapContainer = document.getElementById('map-container');
-        const mapImages = document.querySelectorAll('.map-image'); 
-        const mapSelect = document.getElementById('map-select');
-        const categorySelect = document.getElementById('visitor-category-select');
-        const actionSelect = document.getElementById('action-select');
-        const currentCategory = document.getElementById('current-category');
-        const currentLocation = document.getElementById('current-location');
-        const currentAction = document.getElementById('current-action');
-        const recordButton = document.getElementById('record-button');
+// --- 設定 ---
+const DISTANCE_THRESHOLD = 10; 
+const CATEGORY_KEY = 'visitorCategories';
+const ACTION_KEY = 'visitorActions';
+const LOCATION_KEY = 'locationMarkers';
+const LOG_KEY = 'behaviorLog';
 
-        // --- 狀態變數 ---
-        let locations = loadData(LOCATION_KEY);
-        let categories = loadData(CATEGORY_KEY, ['一般遊客', '學生團體', '年長者']); 
-        let actions = loadData(ACTION_KEY, ['停留觀看', '快速移動', '使用手機', '互動體驗']); 
-        let logData = loadData(LOG_KEY);
+// --- DOM 元素快取 ---
+const mapContainer = document.getElementById('map-container');
+const mapImages = document.querySelectorAll('.map-image'); 
+const mapSelect = document.getElementById('map-select');
+const categorySelect = document.getElementById('visitor-category-select');
+const actionSelect = document.getElementById('action-select');
+const currentCategory = document.getElementById('current-category');
+const currentLocation = document.getElementById('current-location');
+const currentAction = document.getElementById('current-action');
+const recordButton = document.getElementById('record-button');
 
-        let selectedMapID = mapSelect.value; 
-        let selectedCategory = '';
-        let selectedLocation = '';
-        let selectedAction = '';
-        let currentActiveMapElement = null; 
+// --- 狀態變數 ---
+let locations = loadData(LOCATION_KEY);
+let categories = loadData(CATEGORY_KEY, ['一般遊客', '學生團體', '年長者']); 
+let actions = loadData(ACTION_KEY, ['停留觀看', '快速移動', '使用手機', '互動體驗']); 
+let logData = loadData(LOG_KEY);
 
-        // --- 輔助函數 ---
-        function loadData(key, defaultData = []) {
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : defaultData;
+let selectedMapID = mapSelect.value; 
+let selectedCategory = '';
+let selectedLocation = '';
+let selectedAction = '';
+let currentActiveMapElement = null; 
+
+// --- 輔助函數 ---
+function loadData(key, defaultData = []) {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : defaultData;
+}
+
+function saveData(key, data) {
+    localStorage.setItem(key, JSON.stringify(data));
+}
+
+function getDistanceSq(x1, y1, x2, y2) {
+    return Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2);
+}
+
+// --- 1. 訪客分類操作步驟 ---
+function initCategory() {
+    populateSelect(categorySelect, categories);
+    categorySelect.onchange = () => {
+        selectedCategory = categorySelect.value;
+        currentCategory.textContent = selectedCategory;
+        checkRecordButtonStatus();
+    };
+    if (categories.length > 0) {
+        categorySelect.value = categories[0];
+        categorySelect.onchange(); 
+    }
+}
+
+function addCategory() {
+    const input = document.getElementById('new-category-input');
+    const newName = input.value.trim();
+    
+    if (newName && !categories.includes(newName)) {
+        categories.push(newName);
+        saveData(CATEGORY_KEY, categories);
+        populateSelect(categorySelect, categories);
+        categorySelect.value = newName;
+    }
+    selectedCategory = categorySelect.value || newName;
+    currentCategory.textContent = selectedCategory;
+    input.value = '';
+    checkRecordButtonStatus();
+}
+
+// --- 3. 行為記錄操作步驟 ---
+function initAction() {
+    populateSelect(actionSelect, actions);
+    actionSelect.onchange = () => {
+        selectedAction = actionSelect.value;
+        currentAction.textContent = selectedAction;
+        checkRecordButtonStatus();
+    };
+    if (actions.length > 0) {
+        actionSelect.value = actions[0];
+        actionSelect.onchange(); 
+    }
+}
+
+function addAction() {
+    const input = document.getElementById('new-action-input');
+    const newName = input.value.trim();
+    
+    if (newName && !actions.includes(newName)) {
+        actions.push(newName);
+        saveData(ACTION_KEY, actions);
+        populateSelect(actionSelect, actions);
+        actionSelect.value = newName;
+    }
+    selectedAction = actionSelect.value || newName;
+    currentAction.textContent = selectedAction;
+    input.value = '';
+    checkRecordButtonStatus();
+}
+
+// 填充下拉選單的通用函數
+function populateSelect(selectElement, data) {
+    selectElement.innerHTML = '';
+    data.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item;
+        option.textContent = item;
+        selectElement.appendChild(option);
+    });
+}
+
+// --- 2. 位置操作步驟 ---
+function switchMap() {
+    const newMapID = mapSelect.value;
+    selectedMapID = newMapID;
+    selectedLocation = ''; 
+    currentLocation.textContent = '未點擊';
+    checkRecordButtonStatus();
+
+    mapImages.forEach(img => {
+        img.classList.remove('active');
+        if (img.id === newMapID) {
+            img.classList.add('active');
+            currentActiveMapElement = img; 
         }
+    });
 
-        function saveData(key, data) {
-            localStorage.setItem(key, JSON.stringify(data));
-        }
-        
-        function getDistanceSq(x1, y1, x2, y2) {
-            return Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2);
-        }
+    renderMarkers();
+}
 
-        // --- 1. 訪客分類操作步驟 ---
-        function initCategory() {
-            populateSelect(categorySelect, categories);
-            categorySelect.onchange = () => {
-                selectedCategory = categorySelect.value;
-                currentCategory.textContent = selectedCategory;
-                checkRecordButtonStatus();
-            };
-            if (categories.length > 0) {
-                categorySelect.value = categories[0];
-                categorySelect.onchange(); 
+function renderMarkers() {
+    mapContainer.querySelectorAll('.marker').forEach(m => m.remove());
+    const currentMapMarkers = locations.filter(loc => loc.map === selectedMapID);
+
+    currentMapMarkers.forEach((loc, index) => {
+        const markerDiv = document.createElement('div');
+        markerDiv.className = 'marker';
+        markerDiv.style.left = `${loc.x}px`;
+        markerDiv.style.top = `${loc.y}px`;
+        markerDiv.dataset.index = index;
+        markerDiv.title = `${loc.name} (${loc.x}, ${loc.y})`;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'marker-name';
+        nameSpan.textContent = loc.name;
+
+        markerDiv.appendChild(nameSpan);
+        mapContainer.appendChild(markerDiv);
+    });
+}
+
+mapContainer.addEventListener('click', (event) => {
+    // 如果點擊目標是 marker 本身或其子元素，則不觸發新增點擊事件，讓 marker 保持被選中
+    if (event.target.classList.contains('marker') || event.target.closest('.marker')) {
+        // 如果是點擊既有的 marker，則明確選中該位置
+        const markerElement = event.target.closest('.marker');
+        const locationName = markerElement.querySelector('.marker-name').textContent;
+        selectedLocation = locationName;
+        currentLocation.textContent = selectedLocation;
+        checkRecordButtonStatus();
+        return; 
+    }
+
+    if (!currentActiveMapElement) {
+        return;
+    }
+
+    const rect = mapContainer.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    const thresholdSq = Math.pow(DISTANCE_THRESHOLD, 2);
+
+    let foundLocation = null;
+    let closestDistanceSq = Infinity;
+    
+    const currentMapLocations = locations.filter(loc => loc.map === selectedMapID);
+
+    for (const loc of currentMapLocations) {
+        const distSq = getDistanceSq(x, y, loc.x, loc.y);
+        if (distSq < closestDistanceSq) {
+            closestDistanceSq = distSq;
+            if (distSq <= thresholdSq) {
+                foundLocation = loc;
             }
         }
+    }
 
-        function addCategory() {
-            const input = document.getElementById('new-category-input');
-            const newName = input.value.trim();
-            
-            if (newName && !categories.includes(newName)) {
-                categories.push(newName);
-                saveData(CATEGORY_KEY, categories);
-                populateSelect(categorySelect, categories);
-                categorySelect.value = newName;
+    if (foundLocation) {
+        // 【修正點 1】如果找到現有位置，則設定 selectedLocation
+        selectedLocation = foundLocation.name;
+    } else {
+        // 如果不是既有位置，則提示命名
+        const newName = prompt(`您點擊的座標是 (X: ${Math.round(x)}, Y: ${Math.round(y)})。請為這個新位置命名：`);
+        if (newName) {
+            const existingLoc = locations.find(loc => loc.name === newName);
+            if (existingLoc) {
+                 alert(`位置名稱 "${newName}" 已存在於地圖 "${existingLoc.map}"。請重新命名或點擊現有標記。`);
+            } else {
+                locations.push({ name: newName, x: Math.round(x), y: Math.round(y), map: selectedMapID });
+                saveData(LOCATION_KEY, locations);
+                renderMarkers();
+                selectedLocation = newName;
+                alert(`已新增位置：${selectedLocation}`);
             }
-            selectedCategory = categorySelect.value || newName;
-            currentCategory.textContent = selectedCategory;
-            input.value = '';
-            checkRecordButtonStatus();
-        }
-
-        // --- 3. 行為記錄操作步驟 ---
-        function initAction() {
-            populateSelect(actionSelect, actions);
-            actionSelect.onchange = () => {
-                selectedAction = actionSelect.value;
-                currentAction.textContent = selectedAction;
-                checkRecordButtonStatus();
-            };
-            if (actions.length > 0) {
-                actionSelect.value = actions[0];
-                actionSelect.onchange(); 
-            }
-        }
-
-        function addAction() {
-            const input = document.getElementById('new-action-input');
-            const newName = input.value.trim();
-            
-            if (newName && !actions.includes(newName)) {
-                actions.push(newName);
-                saveData(ACTION_KEY, actions);
-                populateSelect(actionSelect, actions);
-                actionSelect.value = newName;
-            }
-            selectedAction = actionSelect.value || newName;
-            currentAction.textContent = selectedAction;
-            input.value = '';
-            checkRecordButtonStatus();
-        }
-
-        // 填充下拉選單的通用函數
-        function populateSelect(selectElement, data) {
-            selectElement.innerHTML = '';
-            data.forEach(item => {
-                const option = document.createElement('option');
-                option.value = item;
-                option.textContent = item;
-                selectElement.appendChild(option);
-            });
-        }
-
-        // --- 2. 位置操作步驟 ---
-        function switchMap() {
-            const newMapID = mapSelect.value;
-            selectedMapID = newMapID;
+        } else {
             selectedLocation = ''; 
-            currentLocation.textContent = '未點擊';
-            checkRecordButtonStatus();
-
-            mapImages.forEach(img => {
-                img.classList.remove('active');
-                if (img.id === newMapID) {
-                    img.classList.add('active');
-                    currentActiveMapElement = img; 
-                }
-            });
-
-            renderMarkers();
         }
-        
-        function renderMarkers() {
-            mapContainer.querySelectorAll('.marker').forEach(m => m.remove());
-            const currentMapMarkers = locations.filter(loc => loc.map === selectedMapID);
+    }
 
-            currentMapMarkers.forEach((loc, index) => {
-                const markerDiv = document.createElement('div');
-                markerDiv.className = 'marker';
-                markerDiv.style.left = `${loc.x}px`;
-                markerDiv.style.top = `${loc.y}px`;
-                markerDiv.dataset.index = index;
-                markerDiv.title = `${loc.name} (${loc.x}, ${loc.y})`;
+    // 【修正點 2 & 3】統一更新狀態顯示和檢查按鈕狀態
+    currentLocation.textContent = selectedLocation || '未點擊';
+    checkRecordButtonStatus();
+});
 
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'marker-name';
-                nameSpan.textContent = loc.name;
+mapSelect.addEventListener('change', switchMap);
 
-                markerDiv.appendChild(nameSpan);
-                mapContainer.appendChild(markerDiv);
-            });
-        }
+// --- 記錄 ---
+function checkRecordButtonStatus() {
+    const isReady = selectedCategory && selectedLocation && selectedAction;
+    recordButton.disabled = !isReady;
+    recordButton.textContent = isReady ? `記錄: ${selectedCategory} 在 ${selectedLocation} 的 ${selectedAction}` : '請完成所有選擇';
+    recordButton.style.backgroundColor = isReady ? '#28a745' : '#dc3545';
+}
 
-        mapContainer.addEventListener('click', (event) => {
-            if (!currentActiveMapElement || event.target.classList.contains('marker') || event.target.classList.contains('marker-name')) {
-                return;
+function recordBehavior() {
+    if (!selectedCategory || !selectedLocation || !selectedAction) {
+        alert('請先完成 訪客分類、位置點擊 和 行為記錄 的選擇！');
+        return;
+    }
+
+    const now = new Date();
+    const timestamp = now.toLocaleString('zh-TW', { hour12: false });
+    
+    const locationData = locations.find(loc => loc.name === selectedLocation);
+
+    const newLog = {
+        timestamp: timestamp,
+        category: selectedCategory,
+        location: selectedLocation,
+        action: selectedAction,
+        map: mapSelect.options[mapSelect.selectedIndex].text, 
+        coords: locationData ? `(${locationData.x}, ${locationData.y})` : 'N/A'
+    };
+
+    logData.unshift(newLog); 
+    saveData(LOG_KEY, logData);
+    
+    alert(`記錄成功！\n[${timestamp}] ${newLog.category} 在 ${newLog.location} 執行 ${newLog.action}`);
+}
+
+
+// --- 初始化全部功能 ---
+function initApp() {
+    initCategory();
+    initAction();
+    switchMap(); 
+    checkRecordButtonStatus();
+}
+
+// 確保所有圖片載入完成後才執行初始化
+let loadedCount = 0;
+const totalImages = mapImages.length;
+mapImages.forEach(img => {
+    if (img.complete) {
+        loadedCount++;
+    } else {
+        img.onload = () => {
+            loadedCount++;
+            if (loadedCount === totalImages) {
+                initApp();
             }
-
-            const rect = mapContainer.getBoundingClientRect();
-            // 由於圖片是 max-width: 100%，mapContainer 的 rect.width/height 會等於圖片的實際寬高
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            
-            const thresholdSq = Math.pow(DISTANCE_THRESHOLD, 2);
-
-            let foundLocation = null;
-            let closestDistanceSq = Infinity;
-            
-            const currentMapLocations = locations.filter(loc => loc.map === selectedMapID);
-
-            for (const loc of currentMapLocations) {
-                const distSq = getDistanceSq(x, y, loc.x, loc.y);
-                if (distSq < closestDistanceSq) {
-                    closestDistanceSq = distSq;
-                    if (distSq <= thresholdSq) {
-                        foundLocation = loc;
-                    }
-                }
-            }
-
-            if (foundLocation) {
-                selectedLocation = foundLocation.name;
-            } else {
-                const newName = prompt(`您點擊的座標是 (X: ${Math.round(x)}, Y: ${Math.round(y)})。請為這個新位置命名：`);
-                if (newName) {
-                    const existingLoc = locations.find(loc => loc.name === newName);
-                    if (existingLoc) {
-                         alert(`位置名稱 "${newName}" 已存在於地圖 "${existingLoc.map}"。請重新命名或點擊現有標記。`);
-                    } else {
-                        locations.push({ name: newName, x: Math.round(x), y: Math.round(y), map: selectedMapID });
-                        saveData(LOCATION_KEY, locations);
-                        renderMarkers();
-                        selectedLocation = newName;
-                        alert(`已新增位置：${selectedLocation}`);
-                    }
-                } else {
-                    selectedLocation = ''; 
-                }
-            }
-
-            currentLocation.textContent = selectedLocation || '未點擊';
-            checkRecordButtonStatus();
-        });
-
-        mapSelect.addEventListener('change', switchMap);
-
-        // --- 記錄 ---
-        function checkRecordButtonStatus() {
-            const isReady = selectedCategory && selectedLocation && selectedAction;
-            recordButton.disabled = !isReady;
-            recordButton.textContent = isReady ? `記錄: ${selectedCategory} 在 ${selectedLocation} 的 ${selectedAction}` : '請完成所有選擇';
-            recordButton.style.backgroundColor = isReady ? '#28a745' : '#dc3545';
-        }
-
-        function recordBehavior() {
-            if (!selectedCategory || !selectedLocation || !selectedAction) {
-                alert('請先完成 訪客分類、位置點擊 和 行為記錄 的選擇！');
-                return;
-            }
-
-            const now = new Date();
-            const timestamp = now.toLocaleString('zh-TW', { hour12: false });
-            
-            const locationData = locations.find(loc => loc.name === selectedLocation);
-
-            const newLog = {
-                timestamp: timestamp,
-                category: selectedCategory,
-                location: selectedLocation,
-                action: selectedAction,
-                map: mapSelect.options[mapSelect.selectedIndex].text, 
-                coords: locationData ? `(${locationData.x}, ${locationData.y})` : 'N/A'
-            };
-
-            logData.unshift(newLog); 
-            saveData(LOG_KEY, logData);
-            
-            alert(`記錄成功！\n[${timestamp}] ${newLog.category} 在 ${newLog.location} 執行 ${newLog.action}`);
-        }
-
-
-        // --- 初始化全部功能 ---
-        function initApp() {
-            initCategory();
-            initAction();
-            switchMap(); 
-            checkRecordButtonStatus();
-        }
-
-        // 確保所有圖片載入完成後才執行初始化
-        let loadedCount = 0;
-        const totalImages = mapImages.length;
-        mapImages.forEach(img => {
-            if (img.complete) {
-                loadedCount++;
-            } else {
-                img.onload = () => {
-                    loadedCount++;
-                    if (loadedCount === totalImages) {
-                        initApp();
-                    }
-                };
-            }
-        });
-        if (loadedCount === totalImages) {
-            initApp();
-        }
-
+        };
+    }
+});
+if (loadedCount === totalImages) {
+    initApp();
+}
     </script>
 </body>
 </html>
