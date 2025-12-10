@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>訪客行為記錄分析系統</title>
+    <style>
+        /* --- 頁面佈局與樣式 --- */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f4f7f9; }
+        .container { display: flex; gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .control-panel { flex: 1; min-width: 300px; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .map-section { flex: 2; background-color: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+
+        /* --- 地圖與標記樣式 --- */
+        #map-container { 
+            position: relative; 
+            display: inline-block; 
+            cursor: crosshair; 
+            border: 1px solid #ccc;
+        }
+        #map-image { max-width: 100%; height: auto; display: block; }
+        .marker {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: #007bff; /* 藍色 */
+            border-radius: 50%;
+            border: 2px solid white;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .marker:hover { background-color: #0056b3; }
+        .marker-name {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .marker:hover .marker-name { opacity: 1; }
+
+        /* --- 表單控制樣式 --- */
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        select, input[type="text"] { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; transition: background-color 0.2s; }
+        .primary-btn { background-color: #28a745; }
+        .primary-btn:hover { background-color: #1e7e34; }
+
+        /* --- 資料列表樣式 --- */
+        #data-log { border: 1px solid #ccc; max-height: 250px; overflow-y: auto; padding: 10px; margin-top: 20px; background-color: #fff; }
+        .log-item { border-bottom: 1px dashed #eee; padding: 8px 0; font-size: 14px; }
+        .log-item:last-child { border-bottom: none; }
+        .data-export-section { margin-top: 20px; text-align: right; }
+
+    </style>
+</head>
+<body>
+
+    <h1>📊 訪客行為記錄分析系統</h1>
+    <div class="container">
+        
+        <div class="control-panel">
+            <h2>📌 記錄控制台</h2>
+
+            <div class="input-group">
+                <label for="visitor-category-select">訪客分類</label>
+                <select id="visitor-category-select"></select>
+                <input type="text" id="new-category-input" placeholder="新增訪客類別名稱">
+                <button onclick="addCategory()" class="primary-btn" style="width: 100%;">新增或選擇類別</button>
+            </div>
+
+            <hr>
+
+            <div class="input-group">
+                <label for="action-select">行為記錄</label>
+                <select id="action-select"></select>
+                <input type="text" id="new-action-input" placeholder="新增行為名稱">
+                <button onclick="addAction()" class="primary-btn" style="width: 100%;">新增或選擇行為</button>
+            </div>
+
+            <hr>
+            
+            <h3>當前記錄狀態</h3>
+            <p>分類: <strong id="current-category">未選擇</strong></p>
+            <p>位置: <strong id="current-location">未點擊</strong></p>
+            <p>行為: <strong id="current-action">未選擇</strong></p>
+            <p>
+                <button id="record-button" onclick="recordBehavior()" class="primary-btn" style="width: 100%; background-color: #dc3545;" disabled>
+                    開始記錄此行為
+                </button>
+            </p>
+        </div>
+
+        <div class="map-section">
+            
+            <h2>🗺️ 位置記錄 (點擊地圖)</h2>
+            <div class="input-group">
+                <label for="map-select">選擇平面圖</label>
+                <select id="map-select">
+                    <option value="珊瑚王國館平面圖.jpg">珊瑚王國館平面圖</option>
+                </select>
+            </div>
+
+            <div id="map-container">
+                <img id="map-image" src="珊瑚王國館平面圖.jpg" alt="平面圖">
+                </div>
+
+            <div class="data-export-section">
+                <h3>📜 記錄日誌</h3>
+                <div id="data-log"></div>
+                <button onclick="exportData()" class="primary-btn" style="margin-top: 10px;">匯出 Excel (CSV)</button>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        // --- 設定 ---
+        const DISTANCE_THRESHOLD = 10; // 距離容忍度 (10px)
+        const CATEGORY_KEY = 'visitorCategories';
+        const ACTION_KEY = 'visitorActions';
+        const LOCATION_KEY = 'locationMarkers';
+        const LOG_KEY = 'behaviorLog';
+        
+        // --- DOM 元素快取 ---
+        const mapContainer = document.getElementById('map-container');
+        const mapImage = document.getElementById('map-image');
+        const categorySelect = document.getElementById('visitor-category-select');
+        const actionSelect = document.getElementById('action-select');
+        const dataLog = document.getElementById('data-log');
+        const currentCategory = document.getElementById('current-category');
+        const currentLocation = document.getElementById('current-location');
+        const currentAction = document.getElementById('current-action');
+        const recordButton = document.getElementById('record-button');
+
+        // --- 狀態變數 ---
+        let locations = loadData(LOCATION_KEY);
+        let categories = loadData(CATEGORY_KEY, ['一般遊客', '學生團體', '年長者']); // 預設類別
+        let actions = loadData(ACTION_KEY, ['停留觀看', '快速移動', '使用手機', '互動體驗']); // 預設行為
+        let logData = loadData(LOG_KEY);
+
+        let selectedCategory = '';
+        let selectedLocation = '';
+        let selectedAction = '';
+
+        // --- 輔助函數 ---
+        function loadData(key, defaultData = []) {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : defaultData;
+        }
+
+        function saveData(key, data) {
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+        
+        // 歐幾里得距離平方
+        function getDistanceSq(x1, y1, x2, y2) {
+            return Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2);
+        }
+
+        // --- 1. 訪客分類操作步驟 ---
+        function initCategory() {
+            populateSelect(categorySelect, categories);
+            categorySelect.onchange = () => {
+                selectedCategory = categorySelect.value;
+                currentCategory.textContent = selectedCategory;
+                checkRecordButtonStatus();
+            };
+            if (categories.length > 0) {
+                categorySelect.value = categories[0];
+                categorySelect.onchange(); // 觸發選擇第一個項目
+            }
+        }
+
+        function addCategory() {
+            const input = document.getElementById('new-category-input');
+            const newName = input.value.trim();
+            
+            if (newName && !categories.includes(newName)) {
+                categories.push(newName);
+                saveData(CATEGORY_KEY, categories);
+                populateSelect(categorySelect, categories);
+                categorySelect.value = newName;
+            }
+            // 選擇已有的或新加入的
+            selectedCategory = categorySelect.value || newName;
+            currentCategory.textContent = selectedCategory;
+            input.value = '';
+            checkRecordButtonStatus();
+        }
+
+        // --- 3. 行為記錄操作步驟 (與分類類似) ---
+        function initAction() {
+            populateSelect(actionSelect, actions);
+            actionSelect.onchange = () => {
+                selectedAction = actionSelect.value;
+                currentAction.textContent = selectedAction;
+                checkRecordButtonStatus();
+            };
+            if (actions.length > 0) {
+                actionSelect.value = actions[0];
+                actionSelect.onchange(); // 觸發選擇第一個項目
+            }
+        }
+
+        function addAction() {
+            const input = document.getElementById('new-action-input');
+            const newName = input.value.trim();
+            
+            if (newName && !actions.includes(newName)) {
+                actions.push(newName);
+                saveData(ACTION_KEY, actions);
+                populateSelect(actionSelect, actions);
+                actionSelect.value = newName;
+            }
+            // 選擇已有的或新加入的
+            selectedAction = actionSelect.value || newName;
+            currentAction.textContent = selectedAction;
+            input.value = '';
+            checkRecordButtonStatus();
+        }
+
+        // 填充下拉選單的通用函數
+        function populateSelect(selectElement, data) {
+            selectElement.innerHTML = '';
+            data.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item;
+                option.textContent = item;
+                selectElement.appendChild(option);
+            });
+        }
+
+        // --- 2. 位置操作步驟 ---
+        function renderMarkers() {
+            // 清空舊的標記
+            mapContainer.querySelectorAll('.marker').forEach(m => m.remove());
+
+            locations.forEach((loc, index) => {
+                const markerDiv = document.createElement('div');
+                markerDiv.className = 'marker';
+                markerDiv.style.left = `${loc.x}px`;
+                markerDiv.style.top = `${loc.y}px`;
+                markerDiv.dataset.index = index;
+                markerDiv.title = `${loc.name} (${loc.x}, ${loc.y})`;
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'marker-name';
+                nameSpan.textContent = loc.name;
+
+                markerDiv.appendChild(nameSpan);
+                mapContainer.appendChild(markerDiv);
+            });
+        }
+
+        mapContainer.addEventListener('click', (event) => {
+            const x = event.offsetX;
+            const y = event.offsetY;
+            const thresholdSq = Math.pow(DISTANCE_THRESHOLD, 2);
+
+            let foundLocation = null;
+            let closestDistanceSq = Infinity;
+
+            // 檢查既有名稱之座標是否在該點擊座標方圓10px內
+            for (const loc of locations) {
+                const distSq = getDistanceSq(x, y, loc.x, loc.y);
+                if (distSq < closestDistanceSq) {
+                    closestDistanceSq = distSq;
+                    if (distSq <= thresholdSq) {
+                        foundLocation = loc;
+                    }
+                }
+            }
+
+            if (foundLocation) {
+                // 如果是：開始行為記錄作業
+                selectedLocation = foundLocation.name;
+                alert(`已選擇位置：${selectedLocation}。請開始記錄行為。`);
+            } else {
+                // 如果不是：為該點擊的座標命名
+                const newName = prompt(`您點擊的座標是 (X: ${x}, Y: ${y})。請為這個新位置命名：`);
+                if (newName) {
+                    const existingLoc = locations.find(loc => loc.name === newName);
+                    if (existingLoc) {
+                         alert(`位置名稱 "${newName}" 已存在。請重新命名或點擊現有標記。`);
+                    } else {
+                        locations.push({ name: newName, x: x, y: y, map: document.getElementById('map-select').value });
+                        saveData(LOCATION_KEY, locations);
+                        renderMarkers();
+                        selectedLocation = newName;
+                        alert(`已新增位置：${selectedLocation}`);
+                    }
+                } else {
+                    selectedLocation = ''; // 清除位置
+                    alert('已取消命名，請重新點擊。');
+                }
+            }
+
+            currentLocation.textContent = selectedLocation || '未點擊';
+            checkRecordButtonStatus();
+        });
+
+        // --- 記錄與匯出 ---
+        function checkRecordButtonStatus() {
+            const isReady = selectedCategory && selectedLocation && selectedAction;
+            recordButton.disabled = !isReady;
+            recordButton.textContent = isReady ? `記錄: ${selectedCategory} 在 ${selectedLocation} 的 ${selectedAction}` : '請完成所有選擇';
+            recordButton.style.backgroundColor = isReady ? '#28a745' : '#dc3545';
+        }
+
+        function recordBehavior() {
+            if (!selectedCategory || !selectedLocation || !selectedAction) {
+                alert('請先完成 訪客分類、位置點擊 和 行為記錄 的選擇！');
+                return;
+            }
+
+            const now = new Date();
+            const timestamp = now.toLocaleString('zh-TW', { hour12: false });
+            
+            const newLog = {
+                timestamp: timestamp,
+                category: selectedCategory,
+                location: selectedLocation,
+                action: selectedAction,
+                map: document.getElementById('map-select').value,
+                // 找到座標
+                coords: locations.find(loc => loc.name === selectedLocation) ? 
+                        `(${locations.find(loc => loc.name === selectedLocation).x}, ${locations.find(loc => loc.name === selectedLocation).y})` : 'N/A'
+            };
+
+            logData.unshift(newLog); // 加到最前面
+            saveData(LOG_KEY, logData);
+            renderLog();
+            
+            alert(`記錄成功！\n[${timestamp}] ${newLog.category} 在 ${newLog.location} 執行 ${newLog.action}`);
+        }
+
+        function renderLog() {
+            dataLog.innerHTML = '';
+            if (logData.length === 0) {
+                dataLog.innerHTML = '尚無記錄資料。';
+                return;
+            }
+            logData.slice(0, 15).forEach(log => { // 顯示最新的 15 筆
+                const item = document.createElement('div');
+                item.className = 'log-item';
+                item.textContent = `[${log.timestamp}] ${log.category} | ${log.location} | ${log.action}`;
+                dataLog.appendChild(item);
+            });
+        }
+
+        function exportData() {
+            if (logData.length === 0) {
+                alert('沒有資料可以匯出。');
+                return;
+            }
+
+            // CSV 標頭
+            let csv = "時間,訪客分類,位置名稱,行為記錄,地圖,座標\n";
+
+            // 數據行
+            logData.forEach(log => {
+                // 確保數據中如果含有逗號，會被雙引號包住
+                const row = [
+                    `"${log.timestamp}"`,
+                    `"${log.category}"`,
+                    `"${log.location}"`,
+                    `"${log.action}"`,
+                    `"${log.map}"`,
+                    `"${log.coords}"`
+                ].join(",");
+                csv += row + "\n";
+            });
+
+            // 建立 Blob 物件
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", "訪客行為記錄.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- 初始化全部功能 ---
+        function initApp() {
+            initCategory();
+            initAction();
+            renderMarkers();
+            renderLog();
+            checkRecordButtonStatus();
+        }
+
+        // 確保圖片載入後再初始化，以獲得正確的座標計算
+        mapImage.onload = initApp;
+        if (mapImage.complete) {
+            initApp();
+        }
+
+    </script>
+</body>
+</html>
