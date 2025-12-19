@@ -2,120 +2,145 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>紀錄端 - 海生館研究系統</title>
+    <title>紀錄模式 - 海生館研究系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        #map-container { position: relative; display: inline-block; cursor: crosshair; border: 2px solid #e2e8f0; width: 100%; overflow: hidden; border-radius: 8px; }
+        #map-container { position: relative; display: inline-block; cursor: crosshair; border: 2px solid #e2e8f0; width: 100%; border-radius: 8px; background: #f1f5f9; overflow: hidden; }
         .map-image { max-width: 100%; height: auto; display: none; }
         .map-image.active { display: block; }
-        .marker { position: absolute; width: 24px; height: 24px; background-color: #4f46e5; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold; z-index: 20; }
-        .path-line { position: absolute; height: 2px; background-color: #818cf8; z-index: 10; transform-origin: 0 50%; pointer-events: none; opacity: 0.5; }
+        .marker { position: absolute; width: 22px; height: 22px; background: #4f46e5; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); color: white; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 10; }
+        .path-line { position: absolute; height: 2px; background: #818cf8; transform-origin: 0 50%; pointer-events: none; opacity: 0.6; }
     </style>
 </head>
-<body class="bg-slate-50 p-6">
+<body class="bg-slate-50 p-4">
     <div class="max-w-[1200px] mx-auto">
-        <header class="mb-6 flex justify-between items-center border-b pb-4">
-            <h1 class="text-2xl font-extrabold text-slate-800">🔴 現場紀錄模式</h1>
-            <button onclick="goToLog()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-700">
-                📋 查看日誌 (Log)
+        <header class="flex justify-between items-center mb-4 bg-white p-4 rounded-lg shadow-sm border">
+            <div>
+                <h1 class="text-xl font-bold text-slate-700">🔴 現場紀錄模式</h1>
+                <p class="text-xs text-slate-400">數據將自動儲存於瀏覽器中</p>
+            </div>
+            <button onclick="location.href='log-viewer.html'" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-indigo-700 transition-all">
+                📋 查看數據日誌 (LOG)
             </button>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div class="lg:col-span-4 bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <div class="space-y-4">
-                    <input type="text" id="session-id" placeholder="編號 (例如: A01)" class="w-full p-2 border rounded text-sm">
-                    <select id="action-select" class="w-full p-2 border rounded text-sm">
-                        <option value="共同參與">共同參與</option>
-                        <option value="引導說明">引導說明</option>
-                        <option value="拍照錄影">拍照錄影</option>
-                    </select>
-                    <div class="bg-indigo-50 p-4 rounded text-center">
-                        <div id="display-sequence" class="text-xs font-bold text-indigo-400"># 0</div>
-                        <button id="record-btn" onclick="recordPoint()" disabled class="w-full mt-2 bg-indigo-600 text-white py-2 rounded disabled:bg-slate-300">儲存節點</button>
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <div class="md:col-span-4 space-y-4">
+                <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Step 1: 選擇區域</label>
+                        <select id="map-select" onchange="changeMap(this.value)" class="w-full p-2 border rounded bg-slate-50 text-sm">
+                            <option value="map1">台灣水域館</option>
+                            <option value="map2">珊瑚王國館</option>
+                            <option value="map3">世界水域館 1,2F</option>
+                            <option value="map4">世界水域館 3F</option>
+                        </select>
                     </div>
-                    <button onclick="finishSession()" class="w-full text-xs text-slate-400 py-2">結束此組觀察</button>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Step 2: 基本資訊</label>
+                        <input type="text" id="sid" placeholder="個案編號 (如: A01)" class="w-full p-2 border rounded text-sm mb-2">
+                        <select id="action-select" class="w-full p-2 border rounded text-sm">
+                            <option value="共同參與">共同參與</option>
+                            <option value="引導說明">引導說明</option>
+                            <option value="拍照錄影">拍照錄影</option>
+                            <option value="處理私事">處理私事</option>
+                        </select>
+                    </div>
+                    
+                    <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100 text-center">
+                        <div id="pos-display" class="text-xs font-mono text-indigo-400 mb-2">請在地圖上選點...</div>
+                        <button id="save-btn" onclick="save()" disabled class="w-full bg-indigo-600 text-white py-3 rounded-md font-bold disabled:bg-slate-200">儲存目前節點</button>
+                    </div>
+
+                    <button onclick="if(confirm('確定清除目前地圖上的動線？')){path=[];render();}" class="w-full py-2 text-xs text-rose-400 border border-rose-100 rounded hover:bg-rose-50">
+                        🏁 結束此組/重設畫布
+                    </button>
                 </div>
             </div>
-            <div class="lg:col-span-8 bg-white p-4 rounded-xl shadow-sm border border-slate-200 text-center">
+            
+            <div class="md:col-span-8 bg-white p-2 rounded-xl shadow-sm border">
                 <div id="map-container">
-                    <img id="map-image1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg">
+                    <img id="map1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg">
+                    <img id="map2" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/aeee9399-5776-4dc9-bc34-74f3de9610ad.jpg">
+                    <img id="map3" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/be3ac2e6-4910-4308-9c19-d797081ea4e1.jpg">
+                    <img id="map4" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/c7e10c76-a9aa-49ea-abe4-81066e8fd518.jpg">
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        const LOG_KEY = 'nmmba_research_v1';
-        let currentPath = [];
-        let lastSelectedCoord = null;
+        const KEY = 'NMMBA_DATA';
+        let path = [];
+        let tempCoord = null;
 
-        // 強制跳轉，不開啟新分頁
-        function goToLog() {
-            window.location.href = 'log-viewer.html';
+        // 定時檢查資料庫是否被清空 (處理 Back 鍵返回同步)
+        setInterval(() => {
+            const data = localStorage.getItem(KEY);
+            if (!data || data === '[]') {
+                if (path.length > 0) { path = []; render(); }
+            }
+        }, 500);
+
+        function changeMap(mapId) {
+            document.querySelectorAll('.map-image').forEach(img => img.classList.remove('active'));
+            document.getElementById(mapId).classList.add('active');
+            path = []; // 切換館區清空動線
+            render();
         }
 
-        // 核心邏輯：偵測「返回上一頁」的動作
-        window.addEventListener('pageshow', (event) => {
-            // 從資料庫讀取，如果資料庫被清空了，則清空畫布
-            const savedLogs = localStorage.getItem(LOG_KEY);
-            if (!savedLogs || savedLogs === '[]') {
-                currentPath = [];
-                renderVisuals();
-                document.getElementById('display-sequence').textContent = '# 0';
-                console.log("偵測到返回，資料庫為空，已清空畫布。");
-            }
-        });
+        const container = document.getElementById('map-container');
+        container.onclick = (e) => {
+            const rect = container.getBoundingClientRect();
+            tempCoord = { x: Math.round(e.clientX - rect.left), y: Math.round(e.clientY - rect.top) };
+            document.getElementById('pos-display').innerText = `座標: ${tempCoord.x}, ${tempCoord.y}`;
+            document.getElementById('save-btn').disabled = false;
+            render();
+        };
 
-        const mapContainer = document.getElementById('map-container');
-        const recordBtn = document.getElementById('record-btn');
-
-        mapContainer.addEventListener('click', (e) => {
-            const rect = mapContainer.getBoundingClientRect();
-            lastSelectedCoord = { x: Math.round(e.clientX - rect.left), y: Math.round(e.clientY - rect.top) };
-            renderVisuals(); recordBtn.disabled = false;
-        });
-
-        function recordPoint() {
-            const pointData = {
-                timestamp: new Date().toLocaleTimeString(),
-                sessionId: document.getElementById('session-id').value || '未編號',
-                sequence: currentPath.length + 1,
+        function save() {
+            const mapName = document.getElementById('map-select').options[document.getElementById('map-select').selectedIndex].text;
+            const point = { 
+                id: document.getElementById('sid').value || 'N/A',
+                seq: path.length + 1,
                 action: document.getElementById('action-select').value,
-                x: lastSelectedCoord.x, y: lastSelectedCoord.y
+                map: mapName,
+                x: tempCoord.x, y: tempCoord.y,
+                time: new Date().toLocaleTimeString()
             };
-            currentPath.push(pointData);
-            let logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
-            logs.unshift(pointData);
-            localStorage.setItem(LOG_KEY, JSON.stringify(logs));
-            document.getElementById('display-sequence').textContent = `# ${currentPath.length}`;
-            lastSelectedCoord = null; recordBtn.disabled = true; renderVisuals();
+            path.push(point);
+            const all = JSON.parse(localStorage.getItem(KEY) || '[]');
+            all.unshift(point);
+            localStorage.setItem(KEY, JSON.stringify(all));
+            tempCoord = null;
+            document.getElementById('save-btn').disabled = true;
+            render();
         }
 
-        function renderVisuals() {
-            mapContainer.querySelectorAll('.marker, .path-line').forEach(el => el.remove());
-            for (let i = 0; i < currentPath.length - 1; i++) {
-                const p1 = currentPath[i], p2 = currentPath[i+1];
-                const line = document.createElement('div'); line.className = 'path-line';
-                const d = Math.sqrt(Math.pow(p2.x-p1.x,2)+Math.pow(p2.y-p1.y,2));
-                const a = Math.atan2(p2.y-p1.y, p2.x-p1.x) * 180 / Math.PI;
-                line.style.width = d + 'px'; line.style.left = p1.x + 'px'; line.style.top = p1.y + 'px';
-                line.style.transform = `rotate(${a}deg)`; mapContainer.appendChild(line);
-            }
-            currentPath.forEach(p => {
-                const m = document.createElement('div'); m.className = 'marker';
-                m.style.left = p.x + 'px'; m.style.top = p.y + 'px'; m.textContent = p.sequence;
-                mapContainer.appendChild(m);
+        function render() {
+            container.querySelectorAll('.marker, .path-line').forEach(el => el.remove());
+            path.forEach((p, i) => {
+                const m = document.createElement('div');
+                m.className = 'marker'; m.style.left = p.x+'px'; m.style.top = p.y+'px';
+                m.innerText = p.seq; container.appendChild(m);
+                if (i > 0) drawLine(path[i-1], p);
             });
-            if (lastSelectedCoord) {
-                const t = document.createElement('div'); t.className = 'marker'; t.style.backgroundColor = '#ef4444';
-                t.style.left = lastSelectedCoord.x + 'px'; t.style.top = lastSelectedCoord.y + 'px'; t.textContent = '+';
-                mapContainer.appendChild(t);
+            if (tempCoord) {
+                const t = document.createElement('div');
+                t.className = 'marker'; t.style.background = '#ef4444';
+                t.style.left = tempCoord.x+'px'; t.style.top = tempCoord.y+'px';
+                t.innerText = '+'; container.appendChild(t);
             }
         }
 
-        function finishSession() { if(confirm("清除地圖路徑？")) { currentPath = []; renderVisuals(); } }
+        function drawLine(p1, p2) {
+            const l = document.createElement('div'); l.className = 'path-line';
+            const d = Math.sqrt(Math.pow(p2.x-p1.x,2)+Math.pow(p2.y-p1.y,2));
+            const a = Math.atan2(p2.y-p1.y, p2.x-p1.x) * 180 / Math.PI;
+            l.style.width = d+'px'; l.style.left = p1.x+'px'; l.style.top = p1.y+'px';
+            l.style.transform = `rotate(${a}deg)`; container.appendChild(l);
+        }
     </script>
 </body>
 </html>

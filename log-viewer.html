@@ -2,107 +2,83 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>紀錄模式 - 海生館研究系統</title>
+    <title>數據日誌 - 分析端</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        #map-container { position: relative; display: inline-block; cursor: crosshair; border: 2px solid #e2e8f0; width: 100%; border-radius: 8px; background: #f1f5f9; }
-        .map-image { max-width: 100%; height: auto; display: none; }
-        .map-image.active { display: block; }
-        .marker { position: absolute; width: 20px; height: 20px; background: #4f46e5; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); color: white; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 10; }
-        .path-line { position: absolute; height: 2px; background: #818cf8; transform-origin: 0 50%; pointer-events: none; opacity: 0.6; }
-    </style>
 </head>
-<body class="bg-slate-50 p-4">
-    <div class="max-w-4xl mx-auto">
-        <header class="flex justify-between items-center mb-4 bg-white p-4 rounded-lg shadow-sm">
-            <h1 class="text-xl font-bold text-slate-700">🔴 現場紀錄</h1>
-            <button onclick="location.href='log-viewer.html'" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold text-sm">
-                查看日誌 (LOG)
-            </button>
-        </header>
+<body class="bg-slate-100 p-4 md:p-8">
+    <div class="max-w-4xl mx-auto space-y-4">
+        <button onclick="history.back()" class="flex items-center text-indigo-600 font-bold p-3 bg-white rounded-xl shadow-sm w-full justify-center hover:bg-indigo-50 transition-all border">
+            ⬅️ 返回地圖紀錄畫面 (Back)
+        </button>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white p-4 rounded-lg shadow-sm border space-y-4">
-                <input type="text" id="sid" placeholder="個案編號" class="w-full p-2 border rounded">
-                <div class="bg-slate-50 p-3 rounded border border-dashed">
-                    <p id="pos-display" class="text-xs font-mono text-slate-500">請點擊地圖...</p>
-                    <button id="save-btn" onclick="save()" disabled class="w-full mt-2 bg-indigo-500 text-white py-2 rounded disabled:bg-slate-200">儲存點位</button>
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border">
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center">
+                <div>
+                    <h2 class="font-bold text-lg">📋 歷史行為日誌</h2>
+                    <p class="text-slate-400 text-[10px]">Data stored in LocalStorage</p>
                 </div>
-                <button onclick="if(confirm('清空目前畫布？')){path=[];render();}" class="w-full text-xs text-rose-400">清空目前動線</button>
+                <div class="flex gap-2">
+                    <button onclick="exportCSV()" class="bg-emerald-600 px-3 py-1 rounded text-xs font-bold">導出 CSV</button>
+                    <button onclick="clearAll()" class="bg-rose-500 px-3 py-1 rounded text-xs font-bold">全部清空</button>
+                </div>
             </div>
-            
-            <div class="md:col-span-2 bg-white p-2 rounded-lg shadow-sm border">
-                <div id="map-container">
-                    <img id="m1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg">
-                </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 border-b text-slate-500 text-xs uppercase">
+                        <tr>
+                            <th class="p-4">時間</th>
+                            <th class="p-4">個案</th>
+                            <th class="p-4">行為</th>
+                            <th class="p-4">座標 (X,Y)</th>
+                            <th class="p-4">館區</th>
+                        </tr>
+                    </thead>
+                    <tbody id="list" class="divide-y divide-slate-100"></tbody>
+                </table>
             </div>
         </div>
     </div>
 
     <script>
         const KEY = 'NMMBA_DATA';
-        let path = [];
-        let tempCoord = null;
-
-        // 【核心】每 0.5 秒檢查一次資料庫，如果被 Log 頁面刪除了，這裡也要清空
-        setInterval(() => {
-            const data = localStorage.getItem(KEY);
-            if (!data || data === '[]') {
-                if (path.length > 0) {
-                    path = [];
-                    render();
-                    console.log("偵測到資料庫已清空，同步重置畫布。");
-                }
+        function show() {
+            const data = JSON.parse(localStorage.getItem(KEY) || '[]');
+            const list = document.getElementById('list');
+            if(data.length === 0) {
+                list.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-slate-400 italic">目前尚無紀錄數據</td></tr>`;
+                return;
             }
-        }, 500);
-
-        const container = document.getElementById('map-container');
-        container.onclick = (e) => {
-            const rect = container.getBoundingClientRect();
-            tempCoord = { x: Math.round(e.clientX - rect.left), y: Math.round(e.clientY - rect.top) };
-            document.getElementById('pos-display').innerText = `座標: ${tempCoord.x}, ${tempCoord.y}`;
-            document.getElementById('save-btn').disabled = false;
-            render();
-        };
-
-        function save() {
-            const point = { 
-                id: document.getElementById('sid').value || 'N/A',
-                seq: path.length + 1,
-                x: tempCoord.x, y: tempCoord.y 
-            };
-            path.push(point);
-            const all = JSON.parse(localStorage.getItem(KEY) || '[]');
-            all.unshift(point);
-            localStorage.setItem(KEY, JSON.stringify(all));
-            tempCoord = null;
-            document.getElementById('save-btn').disabled = true;
-            render();
+            list.innerHTML = data.map(d => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="p-4 text-slate-400 font-mono text-xs">${d.time}</td>
+                    <td class="p-4 font-bold text-indigo-600">${d.id} <span class="text-[10px] text-slate-300 ml-1">#${d.seq}</span></td>
+                    <td class="p-4 font-medium">${d.action}</td>
+                    <td class="p-4 text-slate-400 font-mono text-xs">${d.x}, ${d.y}</td>
+                    <td class="p-4 text-slate-500 text-xs">${d.map}</td>
+                </tr>
+            `).join('');
         }
 
-        function render() {
-            container.querySelectorAll('.marker, .path-line').forEach(el => el.remove());
-            path.forEach((p, i) => {
-                const m = document.createElement('div');
-                m.className = 'marker'; m.style.left = p.x+'px'; m.style.top = p.y+'px';
-                m.innerText = p.seq; container.appendChild(m);
-                if (i > 0) drawLine(path[i-1], p);
-            });
-            if (tempCoord) {
-                const t = document.createElement('div');
-                t.className = 'marker'; t.style.background = 'red';
-                t.style.left = tempCoord.x+'px'; t.style.top = tempCoord.y+'px';
-                t.innerText = '+'; container.appendChild(t);
+        function clearAll() {
+            if (confirm("確定要刪除所有數據嗎？此動作將同步清空紀錄畫布。")) {
+                localStorage.removeItem(KEY);
+                location.reload(); 
             }
         }
 
-        function drawLine(p1, p2) {
-            const l = document.createElement('div'); l.className = 'path-line';
-            const d = Math.sqrt(Math.pow(p2.x-p1.x,2)+Math.pow(p2.y-p1.y,2));
-            const a = Math.atan2(p2.y-p1.y, p2.x-p1.x) * 180 / Math.PI;
-            l.style.width = d+'px'; l.style.left = p1.x+'px'; l.style.top = p1.y+'px';
-            l.style.transform = `rotate(${a}deg)`; container.appendChild(l);
+        function exportCSV() {
+            const data = JSON.parse(localStorage.getItem(KEY) || '[]');
+            if(data.length === 0) return alert("無數據可導出");
+            let csv = "\uFEFF時間,個案,序號,行為,X,Y,館區\n";
+            data.forEach(d => csv += `${d.time},${d.id},${d.seq},${d.action},${d.x},${d.y},${d.map}\n`);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `海生館研究紀錄_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
         }
+
+        window.onload = show;
     </script>
 </body>
 </html>
