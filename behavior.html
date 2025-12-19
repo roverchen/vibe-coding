@@ -2,443 +2,291 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>訪客行為記錄分析系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>研究級：博物館觀眾行為與動線記錄系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* --- 頁面佈局與樣式 --- */
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f4f7f9; }
-        /* 移除最大寬度限制 */
-        .container { display: flex; gap: 20px; margin: 0 auto; } 
-        .control-panel { flex: 0 0 350px; /* 固定控制面板寬度 */ background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-        .map-section { flex: 1; /* 讓地圖區域盡可能寬 */ background-color: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-
-        /* --- 地圖與標記樣式 --- */
+        /* 地圖區域樣式 */
         #map-container { 
             position: relative; 
             display: inline-block; 
             cursor: crosshair; 
-            border: 1px solid #ccc;
-            /* 讓地圖容器可以伸縮 */
+            border: 2px solid #e2e8f0;
+            background-color: #f8fafc;
             width: 100%; 
-            min-height: 400px;
+            overflow: hidden;
+            border-radius: 8px;
         }
+        .map-image { max-width: 100%; height: auto; display: none; }
+        .map-image.active { display: block; }
 
-        /* 關鍵修正: 讓所有地圖圖片堆疊在 map-container 中，並控制顯示 */
-        .map-image { 
-            max-width: 100%; 
-            height: auto; 
-            display: none; 
-            position: absolute; 
-            top: 0;
-            left: 0;
-        }
-        .map-image.active {
-            display: block; 
-        }
-
-        /* 標記樣式保持不變 */
+        /* 軌跡點 (Markers) 樣式 */
         .marker {
             position: absolute;
-            width: 16px;
-            height: 16px;
-            background-color: #007bff; 
-            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            background-color: #4f46e5; 
             border: 2px solid white;
+            border-radius: 50%;
             transform: translate(-50%, -50%);
-            cursor: pointer;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-            transition: background-color 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 10px;
-            font-weight: bold;
-            z-index: 10; 
-        }
-        .marker:hover { background-color: #0056b3; }
-        .marker-name {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            white-space: nowrap;
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 3px 6px;
-            border-radius: 4px;
             font-size: 12px;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
+            font-weight: bold;
+            z-index: 20;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
-        .marker:hover .marker-name { opacity: 1; }
 
-        /* --- 表單控制樣式 --- */
-        .input-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-        select, input[type="text"] { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; transition: background-color 0.2s; }
-        .primary-btn { background-color: #28a745; }
-        .primary-btn:hover { background-color: #1e7e34; }
-        .secondary-btn { background-color: #007bff; margin-top: 10px;}
-        .secondary-btn:hover { background-color: #0056b3; }
+        /* 軌跡連線 (Path Line) 樣式 */
+        .path-line {
+            position: absolute;
+            height: 3px;
+            background-color: #818cf8;
+            z-index: 10;
+            transform-origin: 0 50%;
+            pointer-events: none;
+            opacity: 0.6;
+        }
 
-        .data-export-section { text-align: right; }
-        .data-export-section a { text-decoration: none; }
-
+        /* 控制面板捲軸 */
+        .sticky-panel { position: sticky; top: 1rem; height: calc(100vh - 2rem); overflow-y: auto; }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 p-4 md:p-8">
 
-    <h1>📊 訪客行為記錄分析系統</h1>
-    <div class="container">
-        
-        <div class="control-panel">
-            <h2>📌 記錄控制台</h2>
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 border-b pb-4">
+            <h1 class="text-3xl font-extrabold text-slate-800">📊 觀眾行為研究記錄系統</h1>
+            <p class="text-slate-500 mt-2">依據《博物館兒童空間的家長行為研究》方法論設計</p>
+        </header>
 
-            <div class="input-group">
-                <label for="visitor-category-select">訪客分類</label>
-                <select id="visitor-category-select"></select>
-                <input type="text" id="new-category-input" placeholder="新增訪客類別名稱">
-                <button onclick="addCategory()" class="primary-btn" style="width: 100%;">新增或選擇類別</button>
-            </div>
-
-            <hr>
-
-            <div class="input-group">
-                <label for="action-select">行為記錄</label>
-                <select id="action-select"></select>
-                <input type="text" id="new-action-input" placeholder="新增行為名稱">
-                <button onclick="addAction()" class="primary-btn" style="width: 100%;">新增或選擇行為</button>
-            </div>
-
-            <hr>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            <h3>當前記錄狀態</h3>
-            <p>分類: <strong id="current-category">未選擇</strong></p>
-            <p>位置: <strong id="current-location">未點擊</strong></p>
-            <p>行為: <strong id="current-action">未選擇</strong></p>
-            <p>
-                <button id="record-button" onclick="recordBehavior()" class="primary-btn" style="width: 100%; background-color: #dc3545;" disabled>
-                    開始記錄此行為
-                </button>
-            </p>
-            
-            <hr>
+            <div class="lg:col-span-4">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 sticky-panel space-y-6">
+                    
+                    <section>
+                        <h2 class="text-lg font-bold text-indigo-700 mb-4 flex items-center">
+                            <span class="mr-2">👤</span> 1. 觀察個案資訊
+                        </h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">觀察編號 (Session ID)</label>
+                                <input type="text" id="session-id" placeholder="例如: 20230712-01" 
+                                       class="w-full p-2 border rounded-md bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">團體成員組合 (Group Composition)</label>
+                                <select id="group-type-select" class="w-full p-2 border rounded-md">
+                                    <option value="1大1小">1成人 + 1兒童 (1A1C)</option>
+                                    <option value="1大2小">1成人 + 2兒童 (1A2C)</option>
+                                    <option value="2大1小">2成人 + 1兒童 (2A1C)</option>
+                                    <option value="2大2小">2成人 + 2兒童 (2A2C)</option>
+                                    <option value="其他組合">其他組合</option>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
 
-            <div class="data-export-section">
-                <a href="log-viewer.html">
-                    <button class="secondary-btn" style="width: 100%;">查看所有記錄與匯出</button>
-                </a>
-            </div>
-        </div>
+                    <hr class="border-slate-100">
 
-        <div class="map-section">
-            
-            <h2>🗺️ 位置記錄 (點擊地圖)</h2>
-            <div class="input-group">
-                <label for="map-select">選擇平面圖</label>
-                <select id="map-select">
-                    <option value="map-image1" selected>台灣水域館平面圖</option>
-                    <option value="map-image2">珊瑚王國館平面圖</option>
-                    <option value="map-image3">世界水域館1,2F平面圖</option>
-                    <option value="map-image4">世界水域館3F平面圖</option>
-                </select>
+                    <section>
+                        <h2 class="text-lg font-bold text-indigo-700 mb-4 flex items-center">
+                            <span class="mr-2">📝</span> 2. 行為紀錄
+                        </h2>
+                        <div class="space-y-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">當前觀察行為 (Behavioral Coding)</label>
+                            <select id="action-select" class="w-full p-2 border rounded-md mb-2">
+                                <optgroup label="互動行為 (Interactive)">
+                                    <option value="共同參與">共同參與 (共同操作展品)</option>
+                                    <option value="引導說明">引導說明 (解釋/對話)</option>
+                                    <option value="體力支援">體力支援 (協助/提物)</option>
+                                    <option value="被動隨行">被動隨行 (近距離觀察)</option>
+                                </optgroup>
+                                <optgroup label="非互動行為 (Non-Interactive)">
+                                    <option value="拍照錄影">拍照錄影</option>
+                                    <option value="處理私事">處理私事 (滑手機/交談)</option>
+                                    <option value="休息等待">休息等待</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </section>
+
+                    <section class="bg-indigo-50 p-4 rounded-lg">
+                        <h3 class="font-bold text-indigo-800 mb-2 text-sm">當前追蹤狀態</h3>
+                        <div class="text-xs space-y-1 text-indigo-700">
+                            <p>位置: <span id="display-location" class="font-bold">尚未點擊地圖</span></p>
+                            <p>軌跡順序: <span id="display-sequence" class="font-bold">第 0 點</span></p>
+                        </div>
+                        <button id="record-btn" onclick="recordPoint()" disabled
+                                class="w-full mt-4 bg-indigo-600 text-white font-bold py-3 rounded-md shadow-md disabled:bg-slate-300 transition-all hover:bg-indigo-700">
+                            記錄此節點與行為
+                        </button>
+                    </section>
+
+                    <div class="pt-4 flex flex-col gap-2">
+                        <button onclick="finishSession()" class="w-full border-2 border-slate-300 text-slate-600 font-bold py-2 rounded-md hover:bg-slate-100">
+                            🏁 結束此個案觀察 (清除動線)
+                        </button>
+                        <a href="log-viewer.html" class="block text-center text-sm text-indigo-600 hover:underline">
+                            查看歷程紀錄與數據匯出
+                        </a>
+                    </div>
+                </div>
             </div>
 
-            <div id="map-container">
-                <img id="map-image1" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg" alt="台灣水域館平面圖">
-                <img id="map-image2" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/aeee9399-5776-4dc9-bc34-74f3de9610ad.jpg" alt="珊瑚王國館平面圖">
-                <img id="map-image3" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/be3ac2e6-4910-4308-9c19-d797081ea4e1.jpg" alt="世界水域館1,2F平面圖">
-                <img id="map-image4" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/c7e10c76-a9aa-49ea-abe4-81066e8fd518.jpg" alt="世界水域館3F平面圖">
+            <div class="lg:col-span-8 space-y-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                        <h2 class="text-xl font-bold text-slate-700">🗺️ 位置紀錄與動線追蹤</h2>
+                        <select id="map-select" class="p-2 border rounded-md text-sm bg-slate-50">
+                            <option value="map-1">兒藝基地 - 區域 A</option>
+                            <option value="map-2">兒藝基地 - 區域 B</option>
+                        </select>
+                    </div>
+
+                    <div id="map-container">
+                        <img id="map-1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg" alt="兒藝基地平面圖">
+                        <img id="map-2" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/be3ac2e6-4910-4308-9c19-d797081ea4e1.jpg" alt="兒藝基地平面圖2">
+                    </div>
+                    <p class="mt-2 text-xs text-slate-400 font-mono">※ 點擊地圖以設定觀眾所在位置座標</p>
+                </div>
             </div>
-            
+
         </div>
     </div>
 
     <script>
-// --- 設定 ---
-const DISTANCE_THRESHOLD = 10; 
-const CATEGORY_KEY = 'visitorCategories';
-const ACTION_KEY = 'visitorActions';
-const LOCATION_KEY = 'locationMarkers';
-const LOG_KEY = 'behaviorLog';
+        // --- 設定與儲存金鑰 ---
+        const LOG_KEY = 'museum_research_logs';
+        
+        // --- 狀態管理 ---
+        let currentPath = []; // 儲存當前個案的動線點
+        let lastSelectedCoord = null;
+        let logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
 
-// --- DOM 元素快取 ---
-const mapContainer = document.getElementById('map-container');
-const mapImages = document.querySelectorAll('.map-image'); 
-const mapSelect = document.getElementById('map-select');
-const categorySelect = document.getElementById('visitor-category-select');
-const actionSelect = document.getElementById('action-select');
-const currentCategory = document.getElementById('current-category');
-const currentLocation = document.getElementById('current-location');
-const currentAction = document.getElementById('current-action');
-const recordButton = document.getElementById('record-button');
+        const mapContainer = document.getElementById('map-container');
+        const recordBtn = document.getElementById('record-btn');
+        const displayLocation = document.getElementById('display-location');
+        const displaySequence = document.getElementById('display-sequence');
 
-// --- 狀態變數 ---
-let locations = loadData(LOCATION_KEY);
-let categories = loadData(CATEGORY_KEY, ['一般遊客', '學生團體', '年長者']); 
-let actions = loadData(ACTION_KEY, ['停留觀看', '快速移動', '使用手機', '互動體驗']); 
-let logData = loadData(LOG_KEY);
+        // --- 1. 地圖點擊邏輯 ---
+        mapContainer.addEventListener('click', (e) => {
+            const rect = mapContainer.getBoundingClientRect();
+            const x = Math.round(e.clientX - rect.left);
+            const y = Math.round(e.clientY - rect.top);
+            
+            lastSelectedCoord = { x, y };
+            displayLocation.textContent = `座標: (${x}, ${y})`;
+            
+            renderVisuals();
+            recordBtn.disabled = false;
+        });
 
-let selectedMapID = mapSelect.value; 
-let selectedCategory = '';
-let selectedLocation = '';
-let selectedAction = '';
-let currentActiveMapElement = null; 
+        // --- 2. 記錄行為點 (軌跡節點) ---
+        function recordPoint() {
+            const sessionId = document.getElementById('session-id').value || '未編號';
+            const groupType = document.getElementById('group-type-select').value;
+            const action = document.getElementById('action-select').value;
+            
+            if (!lastSelectedCoord) return;
 
-// --- 輔助函數 ---
-function loadData(key, defaultData = []) {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : defaultData;
-}
+            const pointData = {
+                sessionId: sessionId,
+                groupType: groupType,
+                timestamp: new Date().toISOString(),
+                sequence: currentPath.length + 1,
+                action: action,
+                x: lastSelectedCoord.x,
+                y: lastSelectedCoord.y,
+                map: document.getElementById('map-select').value
+            };
 
-function saveData(key, data) {
-    localStorage.setItem(key, JSON.stringify(data));
-}
+            // 儲存至暫時路徑與持久日誌
+            currentPath.push(pointData);
+            logs.unshift(pointData);
+            localStorage.setItem(LOG_KEY, JSON.stringify(logs));
 
-function getDistanceSq(x1, y1, x2, y2) {
-    return Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2);
-}
-
-// --- 1. 訪客分類操作步驟 ---
-function initCategory() {
-    populateSelect(categorySelect, categories);
-    categorySelect.onchange = () => {
-        selectedCategory = categorySelect.value;
-        currentCategory.textContent = selectedCategory;
-        checkRecordButtonStatus();
-    };
-    if (categories.length > 0) {
-        categorySelect.value = categories[0];
-        categorySelect.onchange(); 
-    }
-}
-
-function addCategory() {
-    const input = document.getElementById('new-category-input');
-    const newName = input.value.trim();
-    
-    if (newName && !categories.includes(newName)) {
-        categories.push(newName);
-        saveData(CATEGORY_KEY, categories);
-        populateSelect(categorySelect, categories);
-        categorySelect.value = newName;
-    }
-    selectedCategory = categorySelect.value || newName;
-    currentCategory.textContent = selectedCategory;
-    input.value = '';
-    checkRecordButtonStatus();
-}
-
-// --- 3. 行為記錄操作步驟 ---
-function initAction() {
-    populateSelect(actionSelect, actions);
-    actionSelect.onchange = () => {
-        selectedAction = actionSelect.value;
-        currentAction.textContent = selectedAction;
-        checkRecordButtonStatus();
-    };
-    if (actions.length > 0) {
-        actionSelect.value = actions[0];
-        actionSelect.onchange(); 
-    }
-}
-
-function addAction() {
-    const input = document.getElementById('new-action-input');
-    const newName = input.value.trim();
-    
-    if (newName && !actions.includes(newName)) {
-        actions.push(newName);
-        saveData(ACTION_KEY, actions);
-        populateSelect(actionSelect, actions);
-        actionSelect.value = newName;
-    }
-    selectedAction = actionSelect.value || newName;
-    currentAction.textContent = selectedAction;
-    input.value = '';
-    checkRecordButtonStatus();
-}
-
-// 填充下拉選單的通用函數
-function populateSelect(selectElement, data) {
-    selectElement.innerHTML = '';
-    data.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item;
-        option.textContent = item;
-        selectElement.appendChild(option);
-    });
-}
-
-// --- 2. 位置操作步驟 ---
-function switchMap() {
-    const newMapID = mapSelect.value;
-    selectedMapID = newMapID;
-    selectedLocation = ''; 
-    currentLocation.textContent = '未點擊';
-    checkRecordButtonStatus();
-
-    mapImages.forEach(img => {
-        img.classList.remove('active');
-        if (img.id === newMapID) {
-            img.classList.add('active');
-            currentActiveMapElement = img; 
+            // 更新 UI
+            displaySequence.textContent = `第 ${currentPath.length} 點`;
+            lastSelectedCoord = null;
+            recordBtn.disabled = true;
+            renderVisuals();
+            
+            console.log("已記錄節點:", pointData);
         }
-    });
 
-    renderMarkers();
-}
+        // --- 3. 視覺化渲染 (Markers & Lines) ---
+        function renderVisuals() {
+            // 清除舊有的視覺元素
+            mapContainer.querySelectorAll('.marker, .path-line, .temp-marker').forEach(el => el.remove());
 
-function renderMarkers() {
-    mapContainer.querySelectorAll('.marker').forEach(m => m.remove());
-    const currentMapMarkers = locations.filter(loc => loc.map === selectedMapID);
+            // A. 繪製已儲存的路徑連線 (Trajectory Lines)
+            for (let i = 0; i < currentPath.length - 1; i++) {
+                const start = currentPath[i];
+                const end = currentPath[i+1];
+                drawLine(start.x, start.y, end.x, end.y);
+            }
 
-    currentMapMarkers.forEach((loc, index) => {
-        const markerDiv = document.createElement('div');
-        markerDiv.className = 'marker';
-        markerDiv.style.left = `${loc.x}px`;
-        markerDiv.style.top = `${loc.y}px`;
-        markerDiv.dataset.index = index;
-        markerDiv.title = `${loc.name} (${loc.x}, ${loc.y})`;
+            // B. 繪製軌跡點 (Markers)
+            currentPath.forEach((p, idx) => {
+                const marker = document.createElement('div');
+                marker.className = 'marker';
+                marker.style.left = p.x + 'px';
+                marker.style.top = p.y + 'px';
+                marker.textContent = p.sequence;
+                marker.title = `${p.action} (${p.groupType})`;
+                mapContainer.appendChild(marker);
+            });
 
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'marker-name';
-        nameSpan.textContent = loc.name;
-
-        markerDiv.appendChild(nameSpan);
-        mapContainer.appendChild(markerDiv);
-    });
-}
-
-mapContainer.addEventListener('click', (event) => {
-    // 如果點擊目標是 marker 本身或其子元素，則不觸發新增點擊事件，讓 marker 保持被選中
-    if (event.target.classList.contains('marker') || event.target.closest('.marker')) {
-        // 如果是點擊既有的 marker，則明確選中該位置
-        const markerElement = event.target.closest('.marker');
-        const locationName = markerElement.querySelector('.marker-name').textContent;
-        selectedLocation = locationName;
-        currentLocation.textContent = selectedLocation;
-        checkRecordButtonStatus();
-        return; 
-    }
-
-    if (!currentActiveMapElement) {
-        return;
-    }
-
-    const rect = mapContainer.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    
-    const thresholdSq = Math.pow(DISTANCE_THRESHOLD, 2);
-
-    let foundLocation = null;
-    let closestDistanceSq = Infinity;
-    
-    const currentMapLocations = locations.filter(loc => loc.map === selectedMapID);
-
-    for (const loc of currentMapLocations) {
-        const distSq = getDistanceSq(x, y, loc.x, loc.y);
-        if (distSq < closestDistanceSq) {
-            closestDistanceSq = distSq;
-            if (distSq <= thresholdSq) {
-                foundLocation = loc;
+            // C. 繪製當前選取點 (尚未記錄的點)
+            if (lastSelectedCoord) {
+                const temp = document.createElement('div');
+                temp.className = 'marker temp-marker';
+                temp.style.left = lastSelectedCoord.x + 'px';
+                temp.style.top = lastSelectedCoord.y + 'px';
+                temp.style.backgroundColor = '#ef4444'; // 紅色表示預備點
+                temp.textContent = '?';
+                mapContainer.appendChild(temp);
             }
         }
-    }
 
-    if (foundLocation) {
-        // 【修正點 1】如果找到現有位置，則設定 selectedLocation
-        selectedLocation = foundLocation.name;
-    } else {
-        // 如果不是既有位置，則提示命名
-        const newName = prompt(`您點擊的座標是 (X: ${Math.round(x)}, Y: ${Math.round(y)})。請為這個新位置命名：`);
-        if (newName) {
-            const existingLoc = locations.find(loc => loc.name === newName);
-            if (existingLoc) {
-                 alert(`位置名稱 "${newName}" 已存在於地圖 "${existingLoc.map}"。請重新命名或點擊現有標記。`);
-            } else {
-                locations.push({ name: newName, x: Math.round(x), y: Math.round(y), map: selectedMapID });
-                saveData(LOCATION_KEY, locations);
-                renderMarkers();
-                selectedLocation = newName;
-                alert(`已新增位置：${selectedLocation}`);
-            }
-        } else {
-            selectedLocation = ''; 
+        // 繪線工具函式
+        function drawLine(x1, y1, x2, y2) {
+            const line = document.createElement('div');
+            line.className = 'path-line';
+            const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+            line.style.width = distance + 'px';
+            line.style.left = x1 + 'px';
+            line.style.top = y1 + 'px';
+            line.style.transform = `rotate(${angle}deg)`;
+            mapContainer.appendChild(line);
         }
-    }
 
-    // 【修正點 2 & 3】統一更新狀態顯示和檢查按鈕狀態
-    currentLocation.textContent = selectedLocation || '未點擊';
-    checkRecordButtonStatus();
-});
-
-mapSelect.addEventListener('change', switchMap);
-
-// --- 記錄 ---
-function checkRecordButtonStatus() {
-    const isReady = selectedCategory && selectedLocation && selectedAction;
-    recordButton.disabled = !isReady;
-    recordButton.textContent = isReady ? `記錄: ${selectedCategory} 在 ${selectedLocation} 的 ${selectedAction}` : '請完成所有選擇';
-    recordButton.style.backgroundColor = isReady ? '#28a745' : '#dc3545';
-}
-
-function recordBehavior() {
-    if (!selectedCategory || !selectedLocation || !selectedAction) {
-        alert('請先完成 訪客分類、位置點擊 和 行為記錄 的選擇！');
-        return;
-    }
-
-    const now = new Date();
-    const timestamp = now.toLocaleString('zh-TW', { hour12: false });
-    
-    const locationData = locations.find(loc => loc.name === selectedLocation);
-
-    const newLog = {
-        timestamp: timestamp,
-        category: selectedCategory,
-        location: selectedLocation,
-        action: selectedAction,
-        map: mapSelect.options[mapSelect.selectedIndex].text, 
-        coords: locationData ? `(${locationData.x}, ${locationData.y})` : 'N/A'
-    };
-
-    logData.unshift(newLog); 
-    saveData(LOG_KEY, logData);
-    
-    alert(`記錄成功！\n[${timestamp}] ${newLog.category} 在 ${newLog.location} 執行 ${newLog.action}`);
-}
-
-
-// --- 初始化全部功能 ---
-function initApp() {
-    initCategory();
-    initAction();
-    switchMap(); 
-    checkRecordButtonStatus();
-}
-
-// 確保所有圖片載入完成後才執行初始化
-let loadedCount = 0;
-const totalImages = mapImages.length;
-mapImages.forEach(img => {
-    if (img.complete) {
-        loadedCount++;
-    } else {
-        img.onload = () => {
-            loadedCount++;
-            if (loadedCount === totalImages) {
-                initApp();
+        // --- 4. 結束個案 ---
+        function finishSession() {
+            if (confirm("確定要結束此個案觀察嗎？這將會清除畫面上的路徑圖以進行下一組觀察。")) {
+                currentPath = [];
+                lastSelectedCoord = null;
+                document.getElementById('session-id').value = '';
+                displayLocation.textContent = '尚未點擊地圖';
+                displaySequence.textContent = '第 0 點';
+                renderVisuals();
             }
-        };
-    }
-});
-if (loadedCount === totalImages) {
-    initApp();
-}
+        }
+
+        // --- 5. 地圖切換 ---
+        document.getElementById('map-select').addEventListener('change', (e) => {
+            document.querySelectorAll('.map-image').forEach(img => img.classList.remove('active'));
+            document.getElementById(e.target.value).classList.add('active');
+            // 切換地圖時建議清除當前路徑，因為座標系不同
+            currentPath = [];
+            renderVisuals();
+        });
     </script>
 </body>
 </html>
