@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>記錄端：海生館觀眾行為研究系統</title>
+    <title>紀錄模式 - 海生館研究系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #map-container { position: relative; display: inline-block; cursor: crosshair; border: 2px solid #e2e8f0; background-color: #f8fafc; width: 100%; overflow: hidden; border-radius: 8px; }
@@ -17,9 +17,12 @@
 <body class="bg-slate-50 p-4 md:p-6">
     <div class="max-w-[1400px] mx-auto">
         <header class="mb-6 flex justify-between items-center border-b pb-4">
-            <h1 class="text-2xl font-extrabold text-slate-800">🔴 現場記錄：觀眾行為與動線</h1>
-            <a href="log-viewer.html" target="_blank" class="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-200 transition-all">
-                👁️ 開啟數據瀏覽器
+            <div>
+                <h1 class="text-2xl font-extrabold text-slate-800">🔴 現場紀錄模式</h1>
+                <p class="text-xs text-slate-500">點擊地圖紀錄動線與行為</p>
+            </div>
+            <a href="log-viewer.html" class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700 transition-all">
+                📋 查看數據日誌 (Log)
             </a>
         </header>
 
@@ -27,77 +30,84 @@
             <div class="lg:col-span-4">
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 sticky-panel space-y-6">
                     <section>
-                        <h2 class="text-md font-bold text-indigo-700 mb-3 border-l-4 border-indigo-700 pl-2">1. 個案資訊</h2>
-                        <div class="space-y-3">
-                            <input type="text" id="session-id" placeholder="觀察編號 (例如: A01)" class="w-full p-2 text-sm border rounded-md">
-                            <select id="group-type-select" class="w-full p-2 text-sm border rounded-md">
-                                <option value="1A1C">1成人+1兒童</option>
-                                <option value="1A2C">1成人+2兒童</option>
-                                <option value="2A1C">2成人+1兒童</option>
-                                <option value="2A2C">2成人+2兒童</option>
-                            </select>
-                        </div>
-                    </section>
-                    <section>
-                        <h2 class="text-md font-bold text-indigo-700 mb-3 border-l-4 border-indigo-700 pl-2">2. 行為紀錄</h2>
-                        <select id="action-select" class="w-full p-2 text-sm border rounded-md">
-                            <optgroup label="互動行為"><option value="共同參與">共同參與</option><option value="引導說明">引導說明</option><option value="體力支援">體力支援</option><option value="被動隨行">被動隨行</option></optgroup>
-                            <optgroup label="非互動行為"><option value="拍照錄影">拍照錄影</option><option value="處理私事">處理私事</option><option value="休息等待">休息等待</option></optgroup>
+                        <h2 class="text-sm font-bold text-indigo-700 mb-3 border-l-4 border-indigo-700 pl-2">個案資訊</h2>
+                        <input type="text" id="session-id" placeholder="觀察編號 (例如: A01)" class="w-full p-2 border rounded-md text-sm outline-none">
+                        <select id="group-type-select" class="w-full mt-3 p-2 border rounded-md text-sm">
+                            <option value="1A1C">1成人 + 1兒童</option>
+                            <option value="2A1C">2成人 + 1兒童</option>
+                            <option value="2A2C">2成人 + 2兒童</option>
                         </select>
                     </section>
-                    <section class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                        <div class="flex justify-between mb-2"><span class="text-xs font-bold text-indigo-800">當前狀態</span><span id="display-sequence" class="text-xs font-bold"># 0</span></div>
-                        <p id="display-location" class="text-xs text-indigo-600 mb-3 font-mono italic">尚未點擊地圖</p>
-                        <button id="record-btn" onclick="recordPoint()" disabled class="w-full bg-indigo-600 text-white font-bold py-3 rounded-md disabled:bg-slate-300">確認記錄此點</button>
+                    <section>
+                        <h2 class="text-sm font-bold text-indigo-700 mb-3 border-l-4 border-indigo-700 pl-2">當前行為</h2>
+                        <select id="action-select" class="w-full p-2 border rounded-md text-sm">
+                            <optgroup label="互動行為"><option value="共同參與">共同參與</option><option value="引導說明">引導說明</option></optgroup>
+                            <optgroup label="非互動行為"><option value="拍照錄影">拍照錄影</option><option value="休息等待">休息等待</option></optgroup>
+                        </select>
                     </section>
-                    <button onclick="finishSession()" class="w-full border border-slate-200 text-slate-500 text-sm font-bold py-2 rounded-md">🏁 結束此組觀察</button>
+                    <section class="bg-indigo-50 p-4 rounded-lg">
+                        <div id="display-sequence" class="text-[10px] font-bold text-indigo-400 mb-1">SEQUENCE #0</div>
+                        <p id="display-location" class="text-xs text-indigo-800 font-mono mb-3">尚未選取位置</p>
+                        <button id="record-btn" onclick="recordPoint()" disabled class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg disabled:bg-slate-300">確認記錄此點</button>
+                    </section>
+                    <button onclick="finishSession()" class="w-full text-xs text-slate-400 py-2 border border-dashed border-slate-200 rounded">🏁 結束此組觀察 (清空畫布)</button>
                 </div>
             </div>
-            <div class="lg:col-span-8 space-y-4">
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    <select id="map-select" class="w-full mb-4 p-2 border rounded-md text-xs bg-slate-50">
-                        <option value="map-image1">台灣水域館</option><option value="map-image2">珊瑚王國館</option><option value="map-image3">世界水域館1,2F</option><option value="map-image4">世界水域館3F</option>
-                    </select>
-                    <div id="map-container">
-                        <img id="map-image1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg">
-                        <img id="map-image2" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/aeee9399-5776-4dc9-bc34-74f3de9610ad.jpg">
-                        <img id="map-image3" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/be3ac2e6-4910-4308-9c19-d797081ea4e1.jpg">
-                        <img id="map-image4" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/c7e10c76-a9aa-49ea-abe4-81066e8fd518.jpg">
-                    </div>
+            <div class="lg:col-span-8 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <select id="map-select" class="w-full mb-4 p-2 border rounded-md text-xs bg-slate-50">
+                    <option value="map-image1">台灣水域館</option><option value="map-image2">珊瑚王國館</option>
+                    <option value="map-image3">世界水域館 1,2F</option><option value="map-image4">世界水域館 3F</option>
+                </select>
+                <div id="map-container">
+                    <img id="map-image1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg">
+                    <img id="map-image2" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/aeee9399-5776-4dc9-bc34-74f3de9610ad.jpg">
+                    <img id="map-image3" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/be3ac2e6-4910-4308-9c19-d797081ea4e1.jpg">
+                    <img id="map-image4" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/c7e10c76-a9aa-49ea-abe4-81066e8fd518.jpg">
                 </div>
             </div>
         </div>
     </div>
     <script>
         const LOG_KEY = 'nmmba_research_v1';
-        let currentPath = [], lastSelectedCoord = null;
         let logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+        let currentPath = []; let lastSelectedCoord = null;
         const mapContainer = document.getElementById('map-container');
         const recordBtn = document.getElementById('record-btn');
+
         mapContainer.addEventListener('click', (e) => {
             const rect = mapContainer.getBoundingClientRect();
             lastSelectedCoord = { x: Math.round(e.clientX - rect.left), y: Math.round(e.clientY - rect.top) };
             document.getElementById('display-location').textContent = `座標: (${lastSelectedCoord.x}, ${lastSelectedCoord.y})`;
             renderVisuals(); recordBtn.disabled = false;
         });
+
         function recordPoint() {
             const pointData = {
                 timestamp: new Date().toLocaleString('zh-TW', {hour12: false}),
-                sessionId: document.getElementById('session-id').value || 'TEMP',
+                sessionId: document.getElementById('session-id').value || '未編號',
                 groupType: document.getElementById('group-type-select').value,
                 sequence: currentPath.length + 1,
                 action: document.getElementById('action-select').value,
                 x: lastSelectedCoord.x, y: lastSelectedCoord.y,
                 map: document.getElementById('map-select').options[document.getElementById('map-select').selectedIndex].text
             };
-            currentPath.push(pointData); logs.unshift(pointData);
+            currentPath.push(pointData);
+            logs.unshift(pointData);
             localStorage.setItem(LOG_KEY, JSON.stringify(logs));
-            document.getElementById('display-sequence').textContent = `# ${currentPath.length}`;
+            document.getElementById('display-sequence').textContent = `SEQUENCE #${currentPath.length}`;
             lastSelectedCoord = null; recordBtn.disabled = true; renderVisuals();
         }
+
         function renderVisuals() {
             mapContainer.querySelectorAll('.marker, .path-line').forEach(el => el.remove());
-            for (let i = 0; i < currentPath.length - 1; i++) drawLine(currentPath[i], currentPath[i+1]);
+            for (let i = 0; i < currentPath.length - 1; i++) {
+                const p1 = currentPath[i], p2 = currentPath[i+1];
+                const line = document.createElement('div'); line.className = 'path-line';
+                const d = Math.sqrt(Math.pow(p2.x-p1.x,2)+Math.pow(p2.y-p1.y,2));
+                const a = Math.atan2(p2.y-p1.y, p2.x-p1.x) * 180 / Math.PI;
+                line.style.width = d + 'px'; line.style.left = p1.x + 'px'; line.style.top = p1.y + 'px';
+                line.style.transform = `rotate(${a}deg)`; mapContainer.appendChild(line);
+            }
             currentPath.forEach(p => {
                 const m = document.createElement('div'); m.className = 'marker';
                 m.style.left = p.x + 'px'; m.style.top = p.y + 'px'; m.textContent = p.sequence;
@@ -109,14 +119,9 @@
                 mapContainer.appendChild(t);
             }
         }
-        function drawLine(p1, p2) {
-            const line = document.createElement('div'); line.className = 'path-line';
-            const d = Math.sqrt(Math.pow(p2.x-p1.x,2)+Math.pow(p2.y-p1.y,2));
-            const a = Math.atan2(p2.y-p1.y, p2.x-p1.x) * 180 / Math.PI;
-            line.style.width = d+'px'; line.style.left = p1.x+'px'; line.style.top = p1.y+'px';
-            line.style.transform = `rotate(${a}deg)`; mapContainer.appendChild(line);
-        }
-        function finishSession() { if(confirm("結束此組？")) { currentPath = []; lastSelectedCoord = null; renderVisuals(); } }
+
+        function finishSession() { if(confirm("確定結束此組觀察？")) { currentPath = []; renderVisuals(); } }
+        
         document.getElementById('map-select').addEventListener('change', (e) => {
             document.querySelectorAll('.map-image').forEach(img => img.classList.remove('active'));
             document.getElementById(e.target.value).classList.add('active');
