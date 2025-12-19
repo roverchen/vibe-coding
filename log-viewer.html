@@ -2,84 +2,47 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>日誌分析 - 海生館研究系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-100 p-4 md:p-8">
-    <div class="max-w-6xl mx-auto">
-        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <header class="bg-slate-800 p-6 text-white flex justify-between items-center">
-                <div>
-                    <h1 class="text-xl font-bold">📋 研究日誌總覽</h1>
-                    <p class="text-slate-400 text-xs">按「回上一頁」可返回地圖紀錄畫面</p>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="exportCSV()" class="bg-emerald-600 px-4 py-2 rounded text-xs font-bold">📥 導出 CSV</button>
-                    <button onclick="clearData()" class="bg-rose-600 px-4 py-2 rounded text-xs font-bold">🗑️ 全部清除</button>
-                </div>
-            </header>
-            
-            <div class="p-4 bg-slate-50 border-b flex justify-between items-center">
-                <a href="recorder.html" class="text-indigo-600 font-bold text-sm">⬅️ 返回紀錄畫面</a>
-                <div id="stats" class="text-xs text-slate-500 font-mono"></div>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
-                        <tr>
-                            <th class="p-4 border-b">時間</th><th class="p-4 border-b">編號</th>
-                            <th class="p-4 border-b">順序</th><th class="p-4 border-b">行為</th>
-                            <th class="p-4 border-b">座標</th><th class="p-4 border-b">館區</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body" class="divide-y divide-slate-100"></tbody>
-                </table>
-            </div>
+<body class="bg-slate-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+        <header class="bg-slate-800 p-6 text-white flex justify-between">
+            <h1 class="font-bold">📋 數據日誌</h1>
+            <button onclick="clearData()" class="bg-rose-600 px-4 py-1 rounded text-xs font-bold">全部清除</button>
+        </header>
+        <div class="p-4 border-b">
+            <button onclick="history.back()" class="text-indigo-600 font-bold">⬅️ 返回紀錄畫面 (或按 Back 鍵)</button>
         </div>
+        <table class="w-full text-left">
+            <thead class="bg-slate-50 text-xs">
+                <tr><th class="p-4">時間</th><th class="p-4">編號</th><th class="p-4">行為</th><th class="p-4">座標</th></tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
     </div>
 
     <script>
         const LOG_KEY = 'nmmba_research_v1';
-        let logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
-
         function renderTable() {
+            const logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
             const body = document.getElementById('table-body');
-            body.innerHTML = '';
-            logs.forEach(log => {
-                const tr = `<tr>
-                    <td class="p-4 text-slate-400 font-mono text-xs">${log.timestamp.split(' ')[1]}</td>
-                    <td class="p-4 font-bold">${log.sessionId}</td>
-                    <td class="p-4 font-mono">#${log.sequence}</td>
-                    <td class="p-4 font-semibold">${log.action}</td>
-                    <td class="p-4 text-slate-400 italic">${log.x}, ${log.y}</td>
-                    <td class="p-4 text-slate-500">${log.map}</td>
-                </tr>`;
-                body.insertAdjacentHTML('beforeend', tr);
-            });
-            document.getElementById('stats').textContent = `COUNT: ${logs.length}`;
+            body.innerHTML = logs.map(l => `
+                <tr class="border-b text-sm">
+                    <td class="p-4">${l.timestamp}</td>
+                    <td class="p-4 font-bold">${l.sessionId}</td>
+                    <td class="p-4">${l.action}</td>
+                    <td class="p-4 text-slate-400">${l.x}, ${l.y}</td>
+                </tr>
+            `).join('');
         }
 
         function clearData() {
-            if (confirm("⚠️ 確定要刪除「所有」研究數據嗎？")) {
+            if (confirm("確定清除資料庫？此動作無法復原。")) {
                 localStorage.removeItem(LOG_KEY);
-                logs = [];
                 renderTable();
-                alert("已清除。現在您可以按「回上一頁」繼續紀錄。");
             }
         }
-
-        function exportCSV() {
-            let csv = "\uFEFF時間,編號,順序,行為,X,Y,館區\n";
-            logs.forEach(l => csv += `${l.timestamp},${l.sessionId},${l.sequence},${l.action},${l.x},${l.y},${l.map}\n`);
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `研究紀錄_${new Date().toISOString().slice(0,10)}.csv`;
-            link.click();
-        }
-
         window.onload = renderTable;
     </script>
 </body>
