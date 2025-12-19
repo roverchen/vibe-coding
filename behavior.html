@@ -5,61 +5,65 @@
     <title>紀錄模式 - 海生館研究系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        #map-container { position: relative; display: inline-block; cursor: crosshair; border: 2px solid #e2e8f0; width: 100%; border-radius: 8px; background: #f1f5f9; overflow: hidden; }
+        #map-container { position: relative; display: inline-block; cursor: crosshair; border: 2px solid #cbd5e1; width: 100%; border-radius: 12px; background: #f1f5f9; overflow: hidden; box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05); }
         .map-image { max-width: 100%; height: auto; display: none; }
         .map-image.active { display: block; }
-        .marker { position: absolute; width: 22px; height: 22px; background: #4f46e5; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); color: white; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 10; }
+        .marker { position: absolute; width: 22px; height: 22px; background: #4f46e5; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); color: white; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         .path-line { position: absolute; height: 2px; background: #818cf8; transform-origin: 0 50%; pointer-events: none; opacity: 0.6; }
     </style>
 </head>
-<body class="bg-slate-50 p-4">
+<body class="bg-slate-50 p-4 md:p-8">
     <div class="max-w-[1200px] mx-auto">
-        <header class="flex justify-between items-center mb-4 bg-white p-4 rounded-lg shadow-sm border">
+        
+        <header class="flex justify-between items-center mb-6 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
             <div>
-                <h1 class="text-xl font-bold text-slate-700">🔴 現場紀錄模式</h1>
-                <p class="text-xs text-slate-400">數據將自動儲存於瀏覽器中</p>
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">🔴 現場紀錄模式</h1>
+                <p class="text-xs text-slate-400 font-medium">研究員：請在下方選擇地圖並開始紀錄</p>
             </div>
-            <button onclick="location.href='log-viewer.html'" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-indigo-700 transition-all">
-                📋 查看數據日誌 (LOG)
+            <button onclick="location.href='log-viewer.html'" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all">
+                📋 開啟數據日誌 (LOG)
             </button>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-            <div class="md:col-span-4 space-y-4">
-                <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Step 1: 選擇區域</label>
-                        <select id="map-select" onchange="changeMap(this.value)" class="w-full p-2 border rounded bg-slate-50 text-sm">
-                            <option value="map1">台灣水域館</option>
-                            <option value="map2">珊瑚王國館</option>
-                            <option value="map3">世界水域館 1,2F</option>
-                            <option value="map4">世界水域館 3F</option>
-                        </select>
-                    </div>
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+            
+            <div class="md:col-span-4 space-y-6">
+                
+                <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-indigo-100 space-y-3">
+                    <label class="block text-sm font-black text-indigo-600 uppercase tracking-wider italic">📍 當前館區選擇</label>
+                    <select id="map-select" onchange="changeMap(this.value)" class="w-full p-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-sm font-bold focus:border-indigo-500 outline-none transition-all">
+                        <option value="map1">1. 臺灣水域館</option>
+                        <option value="map2">2. 珊瑚王國館</option>
+                        <option value="map3">3. 世界水域館 1,2F</option>
+                        <option value="map4">4. 世界水域館 3F</option>
+                    </select>
+                </div>
 
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Step 2: 基本資訊</label>
-                        <input type="text" id="sid" placeholder="個案編號 (如: A01)" class="w-full p-2 border rounded text-sm mb-2">
-                        <select id="action-select" class="w-full p-2 border rounded text-sm">
-                            <option value="共同參與">共同參與</option>
-                            <option value="引導說明">引導說明</option>
-                            <option value="拍照錄影">拍照錄影</option>
-                            <option value="處理私事">處理私事</option>
-                        </select>
-                    </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <label class="block text-sm font-black text-slate-700 uppercase">👤 個案與行為</label>
+                    <input type="text" id="sid" placeholder="輸入編號 (例: A01)" class="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                     
-                    <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100 text-center">
-                        <div id="pos-display" class="text-xs font-mono text-indigo-400 mb-2">請在地圖上選點...</div>
-                        <button id="save-btn" onclick="save()" disabled class="w-full bg-indigo-600 text-white py-3 rounded-md font-bold disabled:bg-slate-200">儲存目前節點</button>
+                    <select id="action-select" class="w-full p-3 border border-slate-200 rounded-xl text-sm font-medium">
+                        <option value="共同參與">共同參與</option>
+                        <option value="引導說明">引導說明</option>
+                        <option value="拍照錄影">拍照錄影</option>
+                        <option value="休息等待">休息等待</option>
+                    </select>
+                    
+                    <div class="bg-slate-50 p-4 rounded-xl border border-dashed border-slate-300 text-center">
+                        <div id="pos-display" class="text-xs font-mono text-slate-400 mb-2 italic">請點擊地圖標記位置</div>
+                        <button id="save-btn" onclick="save()" disabled class="w-full bg-indigo-600 text-white py-4 rounded-xl font-black shadow-md disabled:bg-slate-200 disabled:shadow-none transition-all active:scale-95">
+                            儲存此節點
+                        </button>
                     </div>
 
-                    <button onclick="if(confirm('確定清除目前地圖上的動線？')){path=[];render();}" class="w-full py-2 text-xs text-rose-400 border border-rose-100 rounded hover:bg-rose-50">
-                        🏁 結束此組/重設畫布
+                    <button onclick="if(confirm('確定清除目前畫布上的所有線條與點嗎？')){path=[];render();}" class="w-full py-2 text-xs font-bold text-rose-400 hover:text-rose-600 transition-colors">
+                        🏁 結束此個案 / 清除畫布
                     </button>
                 </div>
             </div>
             
-            <div class="md:col-span-8 bg-white p-2 rounded-xl shadow-sm border">
+            <div class="md:col-span-8 bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
                 <div id="map-container">
                     <img id="map1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg">
                     <img id="map2" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/aeee9399-5776-4dc9-bc34-74f3de9610ad.jpg">
@@ -67,26 +71,35 @@
                     <img id="map4" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/c7e10c76-a9aa-49ea-abe4-81066e8fd518.jpg">
                 </div>
             </div>
+
         </div>
     </div>
 
     <script>
-        const KEY = 'NMMBA_DATA';
+        const KEY = 'NMMBA_DATA_STORAGE';
         let path = [];
         let tempCoord = null;
 
-        // 定時檢查資料庫是否被清空 (處理 Back 鍵返回同步)
+        // 【同步核心】定時檢查資料庫，解決 Back 鍵返回後的資料清空問題
         setInterval(() => {
             const data = localStorage.getItem(KEY);
             if (!data || data === '[]') {
-                if (path.length > 0) { path = []; render(); }
+                if (path.length > 0) {
+                    path = [];
+                    render();
+                    console.log("偵測到 Log 頁面已清空，紀錄端同步重置畫布。");
+                }
             }
         }, 500);
 
+        // 地圖切換功能
         function changeMap(mapId) {
             document.querySelectorAll('.map-image').forEach(img => img.classList.remove('active'));
             document.getElementById(mapId).classList.add('active');
-            path = []; // 切換館區清空動線
+            path = []; // 切換地圖即重設當前動線
+            tempCoord = null;
+            document.getElementById('save-btn').disabled = true;
+            document.getElementById('pos-display').innerText = "切換館區，請重新點擊地圖...";
             render();
         }
 
@@ -94,27 +107,31 @@
         container.onclick = (e) => {
             const rect = container.getBoundingClientRect();
             tempCoord = { x: Math.round(e.clientX - rect.left), y: Math.round(e.clientY - rect.top) };
-            document.getElementById('pos-display').innerText = `座標: ${tempCoord.x}, ${tempCoord.y}`;
+            document.getElementById('pos-display').innerText = `選中座標: ${tempCoord.x}, ${tempCoord.y}`;
             document.getElementById('save-btn').disabled = false;
             render();
         };
 
         function save() {
-            const mapName = document.getElementById('map-select').options[document.getElementById('map-select').selectedIndex].text;
+            const mapLabel = document.getElementById('map-select').options[document.getElementById('map-select').selectedIndex].text;
             const point = { 
-                id: document.getElementById('sid').value || 'N/A',
+                id: document.getElementById('sid').value || '未編號',
                 seq: path.length + 1,
                 action: document.getElementById('action-select').value,
-                map: mapName,
+                map: mapLabel,
                 x: tempCoord.x, y: tempCoord.y,
-                time: new Date().toLocaleTimeString()
+                time: new Date().toLocaleTimeString('zh-TW', { hour12: false })
             };
             path.push(point);
+            
+            // 存入 LocalStorage
             const all = JSON.parse(localStorage.getItem(KEY) || '[]');
             all.unshift(point);
             localStorage.setItem(KEY, JSON.stringify(all));
+            
             tempCoord = null;
             document.getElementById('save-btn').disabled = true;
+            document.getElementById('pos-display').innerText = "已儲存！請點擊下一個位置...";
             render();
         }
 
