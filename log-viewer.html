@@ -3,347 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>研究級：海生館觀眾行為與動線記錄系統</title>
+    <title>分析端：數據瀏覽器</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        #map-container { 
-            position: relative; 
-            display: inline-block; 
-            cursor: crosshair; 
-            border: 2px solid #e2e8f0;
-            background-color: #f8fafc;
-            width: 100%; 
-            overflow: hidden;
-            border-radius: 8px;
-        }
-        .map-image { max-width: 100%; height: auto; display: none; }
-        .map-image.active { display: block; }
-        .marker {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            background-color: #4f46e5; 
-            border: 2px solid white;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 11px;
-            font-weight: bold;
-            z-index: 20;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .path-line {
-            position: absolute;
-            height: 2px;
-            background-color: #818cf8;
-            z-index: 10;
-            transform-origin: 0 50%;
-            pointer-events: none;
-            opacity: 0.5;
-        }
-        .sticky-panel { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
-        .table-container { max-height: 400px; overflow-y: auto; }
-    </style>
 </head>
-<body class="bg-slate-50 p-4 md:p-6">
-
-    <div class="max-w-[1600px] mx-auto">
-        <header class="mb-6 flex justify-between items-end border-b pb-4">
-            <div>
-                <h1 class="text-2xl font-extrabold text-slate-800">📊 觀眾行為研究記錄系統</h1>
-                <p class="text-slate-500 text-sm">依據《兒童空間家長行為研究》方法論設計</p>
-            </div>
-            <div class="space-x-2">
-                <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all">
-                    📥 導出 CSV 數據
-                </button>
-                <button onclick="clearAllLogs()" class="bg-rose-100 text-rose-600 hover:bg-rose-200 px-4 py-2 rounded-lg text-sm font-bold transition-all">
-                    🗑️ 清空所有數據
-                </button>
-            </div>
-        </header>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            <div class="lg:col-span-4">
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 sticky-panel space-y-6">
-                    
-                    <section>
-                        <h2 class="text-md font-bold text-indigo-700 mb-3 flex items-center border-l-4 border-indigo-700 pl-2">
-                            1. 觀察個案資訊 (Word p.57)
-                        </h2>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1">觀察編號 (Session ID)</label>
-                                <input type="text" id="session-id" placeholder="例如: 2023-A01" 
-                                       class="w-full p-2 text-sm border rounded-md bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1">團體組合 (Group Composition)</label>
-                                <select id="group-type-select" class="w-full p-2 text-sm border rounded-md">
-                                    <option value="1A1C">1成人 + 1兒童 (1A1C)</option>
-                                    <option value="1A2C">1成人 + 2兒童 (1A2C)</option>
-                                    <option value="2A1C">2成人 + 1兒童 (2A1C)</option>
-                                    <option value="2A2C">2成人 + 2兒童 (2A2C)</option>
-                                    <option value="其他">其他組合</option>
-                                </select>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section>
-                        <h2 class="text-md font-bold text-indigo-700 mb-3 flex items-center border-l-4 border-indigo-700 pl-2">
-                            2. 行為紀錄 (Word p.67-68)
-                        </h2>
-                        <div class="space-y-3">
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">行為代碼 (Behavioral Coding)</label>
-                            <select id="action-select" class="w-full p-2 text-sm border rounded-md">
-                                <optgroup label="互動行為 (Interactive)">
-                                    <option value="共同參與">共同參與 (Co-engagement)</option>
-                                    <option value="引導說明">引導說明 (Instruction)</option>
-                                    <option value="體力支援">體力支援 (Physical Support)</option>
-                                    <option value="被動隨行">被動隨行 (Passive following)</option>
-                                </optgroup>
-                                <optgroup label="非互動行為 (Non-Interactive)">
-                                    <option value="拍照錄影">拍照錄影 (Photography)</option>
-                                    <option value="處理私事">處理私事 (Private business)</option>
-                                    <option value="休息等待">休息等待 (Resting)</option>
-                                </optgroup>
-                            </select>
-                        </div>
-                    </section>
-
-                    <section class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 class="font-bold text-indigo-800 text-xs uppercase tracking-wider">當前追蹤狀態</h3>
-                            <span id="display-sequence" class="bg-indigo-200 text-indigo-800 text-[10px] px-2 py-0.5 rounded-full font-bold">SEQUENCE: 0</span>
-                        </div>
-                        <p class="text-[11px] text-indigo-600 mb-3">
-                            <span class="opacity-70">最後點擊位置：</span>
-                            <span id="display-location" class="font-mono font-bold italic">未選擇</span>
-                        </p>
-                        <button id="record-btn" onclick="recordPoint()" disabled
-                                class="w-full bg-indigo-600 text-white font-bold py-3 rounded-md shadow-md disabled:bg-slate-300 disabled:shadow-none transition-all hover:bg-indigo-700 active:scale-95">
-                            確認紀錄此節點
-                        </button>
-                    </section>
-
-                    <div class="pt-2">
-                        <button onclick="finishSession()" class="w-full border border-slate-200 text-slate-500 text-sm font-bold py-2 rounded-md hover:bg-slate-50">
-                            🏁 結束個案 / 清除畫布
-                        </button>
-                    </div>
+<body class="bg-slate-100 p-6">
+    <div class="max-w-6xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <header class="bg-slate-800 p-6 text-white flex justify-between items-center">
+                <div>
+                    <h1 class="text-xl font-bold">📋 研究數據總覽</h1>
+                    <p class="text-slate-400 text-xs">讀取自本地存儲空間 (localStorage)</p>
                 </div>
+                <div class="flex gap-2">
+                    <button onclick="exportCSV()" class="bg-emerald-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700">📥 導出 CSV</button>
+                    <button onclick="clearData()" class="bg-rose-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-rose-700">🗑️ 全部清除</button>
+                </div>
+            </header>
+
+            <div class="p-4 border-b bg-slate-50 flex gap-4">
+                <input type="text" id="filter-id" oninput="renderTable()" placeholder="篩選編號..." class="p-2 border rounded-md text-sm w-48">
+                <div id="stats" class="text-sm self-center text-slate-500 font-medium"></div>
             </div>
 
-            <div class="lg:col-span-8 space-y-6">
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-                        <h2 class="text-lg font-bold text-slate-700">🗺️ 平面圖點擊記錄 (動線追蹤)</h2>
-                        <select id="map-select" class="p-2 border rounded-md text-xs bg-slate-50 outline-none">
-                            <option value="map-image1" selected>台灣水域館</option>
-                            <option value="map-image2">珊瑚王國館</option>
-                            <option value="map-image3">世界水域館1,2F</option>
-                            <option value="map-image4">世界水域館3F</option>
-                        </select>
-                    </div>
-
-                    <div id="map-container">
-                        <img id="map-image1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg" alt="台灣水域館">
-                        <img id="map-image2" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/aeee9399-5776-4dc9-bc34-74f3de9610ad.jpg" alt="珊瑚王國館">
-                        <img id="map-image3" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/be3ac2e6-4910-4308-9c19-d797081ea4e1.jpg" alt="世界水域館1,2F">
-                        <img id="map-image4" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/c7e10c76-a9aa-49ea-abe4-81066e8fd518.jpg" alt="世界水域館3F">
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="bg-slate-50 px-4 py-3 border-b flex justify-between items-center">
-                        <h3 class="text-sm font-bold text-slate-700">📋 即時研究日誌 (最後 50 筆)</h3>
-                    </div>
-                    <div class="table-container">
-                        <table class="w-full text-left text-xs border-collapse">
-                            <thead class="bg-slate-100 text-slate-600 sticky top-0">
-                                <tr>
-                                    <th class="p-3 border-b">時間</th>
-                                    <th class="p-3 border-b">編號</th>
-                                    <th class="p-3 border-b">組合</th>
-                                    <th class="p-3 border-b">順序</th>
-                                    <th class="p-3 border-b">行為內容</th>
-                                    <th class="p-3 border-b">座標(X,Y)</th>
-                                    <th class="p-3 border-b">區域</th>
-                                </tr>
-                            </thead>
-                            <tbody id="log-table-body" class="divide-y divide-slate-100">
-                                </tbody>
-                        </table>
-                    </div>
-                </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-slate-600 uppercase text-xs">
+                        <tr>
+                            <th class="p-4">時間</th><th class="p-4">觀察編號</th><th class="p-4">組合</th>
+                            <th class="p-4">序號</th><th class="p-4">行為代碼</th><th class="p-4">座標</th><th class="p-4">區域</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-100 text-slate-700">
+                        </tbody>
+                </table>
             </div>
-
         </div>
     </div>
 
     <script>
         const LOG_KEY = 'nmmba_research_v1';
-        let currentPath = []; 
-        let lastSelectedCoord = null;
-        let logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+        let logs = [];
 
-        const mapContainer = document.getElementById('map-container');
-        const recordBtn = document.getElementById('record-btn');
-        const displayLocation = document.getElementById('display-location');
-        const displaySequence = document.getElementById('display-sequence');
-        const logTableBody = document.getElementById('log-table-body');
-
-        // 初始化
-        updateLogTable();
-
-        // 1. 地圖點擊邏輯
-        mapContainer.addEventListener('click', (e) => {
-            const rect = mapContainer.getBoundingClientRect();
-            const x = Math.round(e.clientX - rect.left);
-            const y = Math.round(e.clientY - rect.top);
-            lastSelectedCoord = { x, y };
-            displayLocation.textContent = `(${x}, ${y})`;
-            renderVisuals();
-            recordBtn.disabled = false;
-        });
-
-        // 2. 記錄功能 (優化 Log 結構)
-        function recordPoint() {
-            const sessionId = document.getElementById('session-id').value || 'TEMP-' + Date.now().toString().slice(-4);
-            const groupType = document.getElementById('group-type-select').value;
-            const action = document.getElementById('action-select').value;
-            const mapName = document.getElementById('map-select').options[document.getElementById('map-select').selectedIndex].text;
-            
-            if (!lastSelectedCoord) return;
-
-            const pointData = {
-                timestamp: new Date().toLocaleString('zh-TW', {hour12: false}),
-                sessionId: sessionId,
-                groupType: groupType,
-                sequence: currentPath.length + 1,
-                action: action,
-                x: lastSelectedCoord.x,
-                y: lastSelectedCoord.y,
-                map: mapName
-            };
-
-            currentPath.push(pointData);
-            logs.unshift(pointData); // 新的在前面
-            localStorage.setItem(LOG_KEY, JSON.stringify(logs));
-
-            // 更新 UI
-            displaySequence.textContent = `SEQUENCE: ${currentPath.length}`;
-            lastSelectedCoord = null;
-            recordBtn.disabled = true;
-            renderVisuals();
-            updateLogTable();
+        function loadLogs() {
+            logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+            renderTable();
         }
 
-        // 3. 更新日誌表格
-        function updateLogTable() {
-            logTableBody.innerHTML = '';
-            const displayLogs = logs.slice(0, 50); // 只顯示最近 50 筆
+        function renderTable() {
+            const filter = document.getElementById('filter-id').value.toLowerCase();
+            const body = document.getElementById('table-body');
+            body.innerHTML = '';
             
-            displayLogs.forEach(log => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition-colors";
-                tr.innerHTML = `
-                    <td class="p-3 text-slate-400">${log.timestamp.split(' ')[1]}</td>
-                    <td class="p-3 font-bold text-indigo-600">${log.sessionId}</td>
-                    <td class="p-3"><span class="bg-slate-100 px-2 py-0.5 rounded text-[10px]">${log.groupType}</span></td>
-                    <td class="p-3 font-mono">#${log.sequence}</td>
-                    <td class="p-3 font-semibold text-slate-700">${log.action}</td>
-                    <td class="p-3 text-slate-500 italic">${log.x}, ${log.y}</td>
-                    <td class="p-3 text-slate-500">${log.map}</td>
+            const filtered = logs.filter(l => l.sessionId.toLowerCase().includes(filter));
+            document.getElementById('stats').textContent = `共 ${filtered.length} 筆記錄`;
+
+            filtered.forEach(log => {
+                const row = `
+                    <tr class="hover:bg-indigo-50 transition-colors">
+                        <td class="p-4 text-slate-400 font-mono text-[11px]">${log.timestamp}</td>
+                        <td class="p-4 font-bold text-indigo-700">${log.sessionId}</td>
+                        <td class="p-4"><span class="bg-slate-100 px-2 py-1 rounded text-[10px]">${log.groupType}</span></td>
+                        <td class="p-4 font-mono">#${log.sequence}</td>
+                        <td class="p-4 font-semibold">${log.action}</td>
+                        <td class="p-4 text-slate-400 font-mono italic">${log.x}, ${log.y}</td>
+                        <td class="p-4 text-slate-500">${log.map}</td>
+                    </tr>
                 `;
-                logTableBody.appendChild(tr);
+                body.insertAdjacentHTML('beforeend', row);
             });
         }
 
-        // 4. CSV 導出 (符合研究統計需求)
-        function exportToCSV() {
-            if (logs.length === 0) return alert("尚無紀錄可導出");
-            
-            let csvContent = "\uFEFF"; // UTF-8 BOM
-            csvContent += "時間,觀察編號,團體組合,軌跡順序,行為內容,座標X,座標Y,區域\n";
-            
-            logs.forEach(log => {
-                csvContent += `${log.timestamp},${log.sessionId},${log.groupType},${log.sequence},${log.action},${log.x},${log.y},${log.map}\n`;
-            });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        function exportCSV() {
+            if (logs.length === 0) return alert("無數據");
+            let csv = "\uFEFF時間,觀察編號,組合,序號,行為,X,Y,地圖\n";
+            logs.forEach(l => csv += `${l.timestamp},${l.sessionId},${l.groupType},${l.sequence},${l.action},${l.x},${l.y},${l.map}\n`);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", `觀眾行為研究數據_${new Date().toISOString().slice(0,10)}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
+            link.href = URL.createObjectURL(blob);
+            link.download = `海生館研究數據_${new Date().toISOString().slice(0,10)}.csv`;
             link.click();
-            document.body.removeChild(link);
         }
 
-        // 5. 視覺化輔助 (動線繪製)
-        function renderVisuals() {
-            mapContainer.querySelectorAll('.marker, .path-line, .temp-marker').forEach(el => el.remove());
-            for (let i = 0; i < currentPath.length - 1; i++) {
-                drawLine(currentPath[i].x, currentPath[i].y, currentPath[i+1].x, currentPath[i+1].y);
-            }
-            currentPath.forEach((p) => {
-                const marker = document.createElement('div');
-                marker.className = 'marker';
-                marker.style.left = p.x + 'px'; marker.style.top = p.y + 'px';
-                marker.textContent = p.sequence;
-                mapContainer.appendChild(marker);
-            });
-            if (lastSelectedCoord) {
-                const temp = document.createElement('div');
-                temp.className = 'marker temp-marker';
-                temp.style.left = lastSelectedCoord.x + 'px'; temp.style.top = lastSelectedCoord.y + 'px';
-                temp.style.backgroundColor = '#ef4444'; temp.textContent = '+';
-                mapContainer.appendChild(temp);
-            }
-        }
-
-        function drawLine(x1, y1, x2, y2) {
-            const line = document.createElement('div');
-            line.className = 'path-line';
-            const dist = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-            line.style.width = dist + 'px'; line.style.left = x1 + 'px'; line.style.top = y1 + 'px';
-            line.style.transform = `rotate(${angle}deg)`;
-            mapContainer.appendChild(line);
-        }
-
-        function finishSession() {
-            if (confirm("結束此組觀察？(將清除地圖上的路徑，但數據已儲存於 Log)")) {
-                currentPath = [];
-                lastSelectedCoord = null;
-                displayLocation.textContent = '未選擇';
-                displaySequence.textContent = 'SEQUENCE: 0';
-                renderVisuals();
-            }
-        }
-
-        function clearAllLogs() {
-            if (confirm("⚠️ 警告：這將刪除本地端「所有」歷史研究數據，確定嗎？")) {
-                logs = [];
+        function clearData() {
+            if (confirm("⚠️ 警告：這將永久刪除本地端「所有」數據！")) {
                 localStorage.removeItem(LOG_KEY);
-                updateLogTable();
-                finishSession();
+                loadLogs();
             }
         }
 
-        document.getElementById('map-select').addEventListener('change', (e) => {
-            document.querySelectorAll('.map-image').forEach(img => img.classList.remove('active'));
-            document.getElementById(e.target.value).classList.add('active');
-            currentPath = [];
-            renderVisuals();
+        // 監聽數據變化 (當在 recorder.html 新增時，此頁面若開著會自動更新)
+        window.addEventListener('storage', (e) => {
+            if (e.key === LOG_KEY) loadLogs();
         });
+
+        window.onload = loadLogs;
     </script>
 </body>
 </html>

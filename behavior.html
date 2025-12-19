@@ -3,284 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>研究級：海生館觀眾行為與動線記錄系統</title>
+    <title>記錄端：海生館觀眾行為研究系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 地圖區域樣式 */
-        #map-container { 
-            position: relative; 
-            display: inline-block; 
-            cursor: crosshair; 
-            border: 2px solid #e2e8f0;
-            background-color: #f8fafc;
-            width: 100%; 
-            overflow: hidden;
-            border-radius: 8px;
-        }
+        #map-container { position: relative; display: inline-block; cursor: crosshair; border: 2px solid #e2e8f0; background-color: #f8fafc; width: 100%; overflow: hidden; border-radius: 8px; }
         .map-image { max-width: 100%; height: auto; display: none; }
         .map-image.active { display: block; }
-
-        /* 軌跡點 (Markers) 樣式 */
-        .marker {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            background-color: #4f46e5; 
-            border: 2px solid white;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 12px;
-            font-weight: bold;
-            z-index: 20;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        /* 軌跡連線 (Path Line) 樣式 */
-        .path-line {
-            position: absolute;
-            height: 3px;
-            background-color: #818cf8;
-            z-index: 10;
-            transform-origin: 0 50%;
-            pointer-events: none;
-            opacity: 0.6;
-        }
-
-        /* 控制面板捲軸 */
-        .sticky-panel { position: sticky; top: 1rem; height: calc(100vh - 2rem); overflow-y: auto; }
+        .marker { position: absolute; width: 24px; height: 24px; background-color: #4f46e5; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold; z-index: 20; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .path-line { position: absolute; height: 2px; background-color: #818cf8; z-index: 10; transform-origin: 0 50%; pointer-events: none; opacity: 0.5; }
+        .sticky-panel { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
     </style>
 </head>
-<body class="bg-slate-50 p-4 md:p-8">
-
-    <div class="max-w-7xl mx-auto">
-        <header class="mb-8 border-b pb-4">
-            <h1 class="text-3xl font-extrabold text-slate-800">📊 觀眾行為研究記錄系統</h1>
-            <p class="text-slate-500 mt-2">依據研究方法論設計 - 國立海洋生物博物館應用版</p>
+<body class="bg-slate-50 p-4 md:p-6">
+    <div class="max-w-[1400px] mx-auto">
+        <header class="mb-6 flex justify-between items-center border-b pb-4">
+            <h1 class="text-2xl font-extrabold text-slate-800">🔴 現場記錄：觀眾行為與動線</h1>
+            <a href="log-viewer.html" target="_blank" class="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-200 transition-all">
+                👁️ 開啟數據瀏覽器
+            </a>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div class="lg:col-span-4">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 sticky-panel space-y-6">
-                    
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 sticky-panel space-y-6">
                     <section>
-                        <h2 class="text-lg font-bold text-indigo-700 mb-4 flex items-center">
-                            <span class="mr-2">👤</span> 1. 觀察個案資訊
-                        </h2>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">觀察編號 (Session ID)</label>
-                                <input type="text" id="session-id" placeholder="例如: NMMBA-20230101-01" 
-                                       class="w-full p-2 border rounded-md bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">團體成員組合 (Group Composition)</label>
-                                <select id="group-type-select" class="w-full p-2 border rounded-md">
-                                    <option value="1大1小">1成人 + 1兒童 (1A1C)</option>
-                                    <option value="1大2小">1成人 + 2兒童 (1A2C)</option>
-                                    <option value="2大1小">2成人 + 1兒童 (2A1C)</option>
-                                    <option value="2大2小">2成人 + 2兒童 (2A2C)</option>
-                                    <option value="其他組合">其他組合</option>
-                                </select>
-                            </div>
-                        </div>
-                    </section>
-
-                    <hr class="border-slate-100">
-
-                    <section>
-                        <h2 class="text-lg font-bold text-indigo-700 mb-4 flex items-center">
-                            <span class="mr-2">📝</span> 2. 行為紀錄
-                        </h2>
-                        <div class="space-y-4">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">當前觀察行為 (Behavioral Coding)</label>
-                            <select id="action-select" class="w-full p-2 border rounded-md mb-2">
-                                <optgroup label="互動行為 (Interactive)">
-                                    <option value="共同參與">共同參與 (共同操作展品)</option>
-                                    <option value="引導說明">引導說明 (解釋/對話)</option>
-                                    <option value="體力支援">體力支援 (協助/提物)</option>
-                                    <option value="被動隨行">被動隨行 (近距離觀察)</option>
-                                </optgroup>
-                                <optgroup label="非互動行為 (Non-Interactive)">
-                                    <option value="拍照錄影">拍照錄影</option>
-                                    <option value="處理私事">處理私事 (滑手機/交談)</option>
-                                    <option value="休息等待">休息等待</option>
-                                </optgroup>
+                        <h2 class="text-md font-bold text-indigo-700 mb-3 border-l-4 border-indigo-700 pl-2">1. 個案資訊</h2>
+                        <div class="space-y-3">
+                            <input type="text" id="session-id" placeholder="觀察編號 (例如: A01)" class="w-full p-2 text-sm border rounded-md">
+                            <select id="group-type-select" class="w-full p-2 text-sm border rounded-md">
+                                <option value="1A1C">1成人+1兒童</option>
+                                <option value="1A2C">1成人+2兒童</option>
+                                <option value="2A1C">2成人+1兒童</option>
+                                <option value="2A2C">2成人+2兒童</option>
                             </select>
                         </div>
                     </section>
-
-                    <section class="bg-indigo-50 p-4 rounded-lg">
-                        <h3 class="font-bold text-indigo-800 mb-2 text-sm">當前追蹤狀態</h3>
-                        <div class="text-xs space-y-1 text-indigo-700">
-                            <p>位置: <span id="display-location" class="font-bold">尚未點擊地圖</span></p>
-                            <p>軌跡順序: <span id="display-sequence" class="font-bold">第 0 點</span></p>
-                        </div>
-                        <button id="record-btn" onclick="recordPoint()" disabled
-                                class="w-full mt-4 bg-indigo-600 text-white font-bold py-3 rounded-md shadow-md disabled:bg-slate-300 transition-all hover:bg-indigo-700">
-                            記錄此節點與行為
-                        </button>
+                    <section>
+                        <h2 class="text-md font-bold text-indigo-700 mb-3 border-l-4 border-indigo-700 pl-2">2. 行為紀錄</h2>
+                        <select id="action-select" class="w-full p-2 text-sm border rounded-md">
+                            <optgroup label="互動行為"><option value="共同參與">共同參與</option><option value="引導說明">引導說明</option><option value="體力支援">體力支援</option><option value="被動隨行">被動隨行</option></optgroup>
+                            <optgroup label="非互動行為"><option value="拍照錄影">拍照錄影</option><option value="處理私事">處理私事</option><option value="休息等待">休息等待</option></optgroup>
+                        </select>
                     </section>
-
-                    <div class="pt-4 flex flex-col gap-2">
-                        <button onclick="finishSession()" class="w-full border-2 border-slate-300 text-slate-600 font-bold py-2 rounded-md hover:bg-slate-100">
-                            🏁 結束此個案觀察 (清除動線)
-                        </button>
-                        <a href="log-viewer.html" class="block text-center text-sm text-indigo-600 hover:underline">
-                            查看歷程紀錄與數據匯出
-                        </a>
-                    </div>
+                    <section class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                        <div class="flex justify-between mb-2"><span class="text-xs font-bold text-indigo-800">當前狀態</span><span id="display-sequence" class="text-xs font-bold"># 0</span></div>
+                        <p id="display-location" class="text-xs text-indigo-600 mb-3 font-mono italic">尚未點擊地圖</p>
+                        <button id="record-btn" onclick="recordPoint()" disabled class="w-full bg-indigo-600 text-white font-bold py-3 rounded-md disabled:bg-slate-300">確認記錄此點</button>
+                    </section>
+                    <button onclick="finishSession()" class="w-full border border-slate-200 text-slate-500 text-sm font-bold py-2 rounded-md">🏁 結束此組觀察</button>
                 </div>
             </div>
-
             <div class="lg:col-span-8 space-y-4">
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-                        <h2 class="text-xl font-bold text-slate-700">🗺️ 位置紀錄與動線追蹤</h2>
-                        <select id="map-select" class="p-2 border rounded-md text-sm bg-slate-50">
-                            <option value="map-image1" selected>台灣水域館平面圖</option>
-                            <option value="map-image2">珊瑚王國館平面圖</option>
-                            <option value="map-image3">世界水域館1,2F平面圖</option>
-                            <option value="map-image4">世界水域館3F平面圖</option>
-                        </select>
-                    </div>
-
+                    <select id="map-select" class="w-full mb-4 p-2 border rounded-md text-xs bg-slate-50">
+                        <option value="map-image1">台灣水域館</option><option value="map-image2">珊瑚王國館</option><option value="map-image3">世界水域館1,2F</option><option value="map-image4">世界水域館3F</option>
+                    </select>
                     <div id="map-container">
-                        <img id="map-image1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg" alt="台灣水域館平面圖">
-                        <img id="map-image2" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/aeee9399-5776-4dc9-bc34-74f3de9610ad.jpg" alt="珊瑚王國館平面圖">
-                        <img id="map-image3" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/be3ac2e6-4910-4308-9c19-d797081ea4e1.jpg" alt="世界水域館1,2F平面圖">
-                        <img id="map-image4" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/c7e10c76-a9aa-49ea-abe4-81066e8fd518.jpg" alt="世界水域館3F平面圖">
+                        <img id="map-image1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg">
+                        <img id="map-image2" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/aeee9399-5776-4dc9-bc34-74f3de9610ad.jpg">
+                        <img id="map-image3" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/be3ac2e6-4910-4308-9c19-d797081ea4e1.jpg">
+                        <img id="map-image4" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/c7e10c76-a9aa-49ea-abe4-81066e8fd518.jpg">
                     </div>
-                    <p class="mt-2 text-xs text-slate-400 font-mono">※ 點擊地圖以設定觀眾所在位置座標</p>
                 </div>
             </div>
-
         </div>
     </div>
-
     <script>
-        const LOG_KEY = 'museum_research_logs';
-        
-        let currentPath = []; 
-        let lastSelectedCoord = null;
+        const LOG_KEY = 'nmmba_research_v1';
+        let currentPath = [], lastSelectedCoord = null;
         let logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
-
         const mapContainer = document.getElementById('map-container');
         const recordBtn = document.getElementById('record-btn');
-        const displayLocation = document.getElementById('display-location');
-        const displaySequence = document.getElementById('display-sequence');
-        const mapSelect = document.getElementById('map-select');
-
-        // 地圖點擊邏輯
         mapContainer.addEventListener('click', (e) => {
             const rect = mapContainer.getBoundingClientRect();
-            const x = Math.round(e.clientX - rect.left);
-            const y = Math.round(e.clientY - rect.top);
-            
-            lastSelectedCoord = { x, y };
-            displayLocation.textContent = `座標: (${x}, ${y})`;
-            
-            renderVisuals();
-            recordBtn.disabled = false;
+            lastSelectedCoord = { x: Math.round(e.clientX - rect.left), y: Math.round(e.clientY - rect.top) };
+            document.getElementById('display-location').textContent = `座標: (${lastSelectedCoord.x}, ${lastSelectedCoord.y})`;
+            renderVisuals(); recordBtn.disabled = false;
         });
-
-        // 記錄軌跡點
         function recordPoint() {
-            const sessionId = document.getElementById('session-id').value || '未編號';
-            const groupType = document.getElementById('group-type-select').value;
-            const action = document.getElementById('action-select').value;
-            
-            if (!lastSelectedCoord) return;
-
             const pointData = {
-                sessionId: sessionId,
-                groupType: groupType,
-                timestamp: new Date().toISOString(),
+                timestamp: new Date().toLocaleString('zh-TW', {hour12: false}),
+                sessionId: document.getElementById('session-id').value || 'TEMP',
+                groupType: document.getElementById('group-type-select').value,
                 sequence: currentPath.length + 1,
-                action: action,
-                x: lastSelectedCoord.x,
-                y: lastSelectedCoord.y,
-                map: mapSelect.options[mapSelect.selectedIndex].text
+                action: document.getElementById('action-select').value,
+                x: lastSelectedCoord.x, y: lastSelectedCoord.y,
+                map: document.getElementById('map-select').options[document.getElementById('map-select').selectedIndex].text
             };
-
-            currentPath.push(pointData);
-            logs.unshift(pointData);
+            currentPath.push(pointData); logs.unshift(pointData);
             localStorage.setItem(LOG_KEY, JSON.stringify(logs));
-
-            displaySequence.textContent = `第 ${currentPath.length} 點`;
-            lastSelectedCoord = null;
-            recordBtn.disabled = true;
-            renderVisuals();
+            document.getElementById('display-sequence').textContent = `# ${currentPath.length}`;
+            lastSelectedCoord = null; recordBtn.disabled = true; renderVisuals();
         }
-
-        // 視覺化渲染
         function renderVisuals() {
-            mapContainer.querySelectorAll('.marker, .path-line, .temp-marker').forEach(el => el.remove());
-
-            for (let i = 0; i < currentPath.length - 1; i++) {
-                const start = currentPath[i];
-                const end = currentPath[i+1];
-                drawLine(start.x, start.y, end.x, end.y);
-            }
-
-            currentPath.forEach((p, idx) => {
-                const marker = document.createElement('div');
-                marker.className = 'marker';
-                marker.style.left = p.x + 'px';
-                marker.style.top = p.y + 'px';
-                marker.textContent = p.sequence;
-                mapContainer.appendChild(marker);
+            mapContainer.querySelectorAll('.marker, .path-line').forEach(el => el.remove());
+            for (let i = 0; i < currentPath.length - 1; i++) drawLine(currentPath[i], currentPath[i+1]);
+            currentPath.forEach(p => {
+                const m = document.createElement('div'); m.className = 'marker';
+                m.style.left = p.x + 'px'; m.style.top = p.y + 'px'; m.textContent = p.sequence;
+                mapContainer.appendChild(m);
             });
-
             if (lastSelectedCoord) {
-                const temp = document.createElement('div');
-                temp.className = 'marker temp-marker';
-                temp.style.left = lastSelectedCoord.x + 'px';
-                temp.style.top = lastSelectedCoord.y + 'px';
-                temp.style.backgroundColor = '#ef4444';
-                temp.textContent = '?';
-                mapContainer.appendChild(temp);
+                const t = document.createElement('div'); t.className = 'marker'; t.style.backgroundColor = '#ef4444';
+                t.style.left = lastSelectedCoord.x + 'px'; t.style.top = lastSelectedCoord.y + 'px'; t.textContent = '+';
+                mapContainer.appendChild(t);
             }
         }
-
-        function drawLine(x1, y1, x2, y2) {
-            const line = document.createElement('div');
-            line.className = 'path-line';
-            const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-
-            line.style.width = distance + 'px';
-            line.style.left = x1 + 'px';
-            line.style.top = y1 + 'px';
-            line.style.transform = `rotate(${angle}deg)`;
-            mapContainer.appendChild(line);
+        function drawLine(p1, p2) {
+            const line = document.createElement('div'); line.className = 'path-line';
+            const d = Math.sqrt(Math.pow(p2.x-p1.x,2)+Math.pow(p2.y-p1.y,2));
+            const a = Math.atan2(p2.y-p1.y, p2.x-p1.x) * 180 / Math.PI;
+            line.style.width = d+'px'; line.style.left = p1.x+'px'; line.style.top = p1.y+'px';
+            line.style.transform = `rotate(${a}deg)`; mapContainer.appendChild(line);
         }
-
-        function finishSession() {
-            if (confirm("確定要結束此個案觀察嗎？這將會清除畫面上的路徑圖以進行下一組觀察。")) {
-                currentPath = [];
-                lastSelectedCoord = null;
-                document.getElementById('session-id').value = '';
-                displayLocation.textContent = '尚未點擊地圖';
-                displaySequence.textContent = '第 0 點';
-                renderVisuals();
-            }
-        }
-
-        // 切換地圖邏輯 (恢復原始 ID 匹配)
-        mapSelect.addEventListener('change', (e) => {
-            const selectedID = e.target.value;
-            document.querySelectorAll('.map-image').forEach(img => {
-                img.classList.remove('active');
-                if (img.id === selectedID) img.classList.add('active');
-            });
-            // 切換館區視同切換情境，建議重置當前路徑
-            currentPath = [];
-            renderVisuals();
+        function finishSession() { if(confirm("結束此組？")) { currentPath = []; lastSelectedCoord = null; renderVisuals(); } }
+        document.getElementById('map-select').addEventListener('change', (e) => {
+            document.querySelectorAll('.map-image').forEach(img => img.classList.remove('active'));
+            document.getElementById(e.target.value).classList.add('active');
+            currentPath = []; renderVisuals();
         });
     </script>
 </body>
