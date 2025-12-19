@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>訪客行為記錄日誌</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f4f7f9; }
+        .log-container { max-width: 1200px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        h1 { border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        
+        .action-bar { text-align: right; margin-bottom: 15px; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; transition: background-color 0.2s; background-color: #007bff; }
+        button:hover { background-color: #0056b3; }
+        
+        #clear-data-btn { background-color: #dc3545; margin-left: 10px; }
+        #clear-data-btn:hover { background-color: #c82333; }
+        #back-btn { background-color: #6c757d; }
+        #back-btn:hover { background-color: #5a6268; }
+    </style>
+</head>
+<body>
+
+    <div class="log-container">
+        <div class="action-bar">
+            <button id="back-btn" onclick="history.back()">← 返回主頁</button>
+            <button onclick="exportData()">匯出 Excel (CSV)</button>
+            <button id="clear-data-btn" onclick="clearData()">清除所有記錄 (危險操作)</button>
+        </div>
+        
+        <h1>📜 訪客行為記錄日誌</h1>
+        <table id="log-table">
+            <thead>
+                <tr>
+                    <th>時間</th>
+                    <th>訪客分類</th>
+                    <th>位置名稱</th>
+                    <th>行為記錄</th>
+                    <th>地圖</th>
+                    <th>座標 (X, Y)</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        const LOG_KEY = 'behaviorLog';
+        const logTableBody = document.querySelector('#log-table tbody');
+        
+        function loadData(key) {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function renderLog() {
+            const logData = loadData(LOG_KEY);
+            logTableBody.innerHTML = ''; 
+
+            if (logData.length === 0) {
+                const row = logTableBody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 6;
+                cell.textContent = "尚無記錄資料。";
+                cell.style.textAlign = 'center';
+                return;
+            }
+
+            logData.forEach(log => {
+                const row = logTableBody.insertRow();
+                row.insertCell().textContent = log.timestamp;
+                row.insertCell().textContent = log.category;
+                row.insertCell().textContent = log.location;
+                row.insertCell().textContent = log.action;
+                row.insertCell().textContent = log.map;
+                row.insertCell().textContent = log.coords;
+            });
+        }
+
+        function exportData() {
+            const logData = loadData(LOG_KEY);
+            if (logData.length === 0) {
+                alert('沒有資料可以匯出。');
+                return;
+            }
+
+            // CSV 標頭
+            let csv = "時間,訪客分類,位置名稱,行為記錄,地圖,座標\n";
+
+            // 數據行
+            logData.forEach(log => {
+                const row = [
+                    `"${log.timestamp}"`,
+                    `"${log.category}"`,
+                    `"${log.location}"`,
+                    `"${log.action}"`,
+                    `"${log.map}"`,
+                    `"${log.coords}"`
+                ].join(",");
+                csv += row + "\n";
+            });
+
+            // 建立 Blob 物件並下載
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", "訪客行為記錄.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function clearData() {
+            if (confirm("確定要清除所有訪客行為記錄嗎？此操作不可逆轉！")) {
+                localStorage.removeItem(LOG_KEY);
+                alert("所有記錄已清除。");
+                renderLog();
+            }
+        }
+        
+        // 頁面載入時執行
+        window.onload = renderLog;
+    </script>
+</body>
+</html>

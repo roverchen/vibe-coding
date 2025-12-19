@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>研究級：博物館觀眾行為與動線記錄系統</title>
+    <title>研究級：海生館觀眾行為與動線記錄系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* 地圖區域樣式 */
@@ -59,7 +59,7 @@
     <div class="max-w-7xl mx-auto">
         <header class="mb-8 border-b pb-4">
             <h1 class="text-3xl font-extrabold text-slate-800">📊 觀眾行為研究記錄系統</h1>
-            <p class="text-slate-500 mt-2">依據《博物館兒童空間的家長行為研究》方法論設計</p>
+            <p class="text-slate-500 mt-2">依據研究方法論設計 - 國立海洋生物博物館應用版</p>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -74,7 +74,7 @@
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">觀察編號 (Session ID)</label>
-                                <input type="text" id="session-id" placeholder="例如: 20230712-01" 
+                                <input type="text" id="session-id" placeholder="例如: NMMBA-20230101-01" 
                                        class="w-full p-2 border rounded-md bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
                             </div>
                             <div>
@@ -142,14 +142,18 @@
                     <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
                         <h2 class="text-xl font-bold text-slate-700">🗺️ 位置紀錄與動線追蹤</h2>
                         <select id="map-select" class="p-2 border rounded-md text-sm bg-slate-50">
-                            <option value="map-1">兒藝基地 - 區域 A</option>
-                            <option value="map-2">兒藝基地 - 區域 B</option>
+                            <option value="map-image1" selected>台灣水域館平面圖</option>
+                            <option value="map-image2">珊瑚王國館平面圖</option>
+                            <option value="map-image3">世界水域館1,2F平面圖</option>
+                            <option value="map-image4">世界水域館3F平面圖</option>
                         </select>
                     </div>
 
                     <div id="map-container">
-                        <img id="map-1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg" alt="兒藝基地平面圖">
-                        <img id="map-2" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/be3ac2e6-4910-4308-9c19-d797081ea4e1.jpg" alt="兒藝基地平面圖2">
+                        <img id="map-image1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg" alt="台灣水域館平面圖">
+                        <img id="map-image2" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/aeee9399-5776-4dc9-bc34-74f3de9610ad.jpg" alt="珊瑚王國館平面圖">
+                        <img id="map-image3" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/be3ac2e6-4910-4308-9c19-d797081ea4e1.jpg" alt="世界水域館1,2F平面圖">
+                        <img id="map-image4" class="map-image" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/c7e10c76-a9aa-49ea-abe4-81066e8fd518.jpg" alt="世界水域館3F平面圖">
                     </div>
                     <p class="mt-2 text-xs text-slate-400 font-mono">※ 點擊地圖以設定觀眾所在位置座標</p>
                 </div>
@@ -159,11 +163,9 @@
     </div>
 
     <script>
-        // --- 設定與儲存金鑰 ---
         const LOG_KEY = 'museum_research_logs';
         
-        // --- 狀態管理 ---
-        let currentPath = []; // 儲存當前個案的動線點
+        let currentPath = []; 
         let lastSelectedCoord = null;
         let logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
 
@@ -171,8 +173,9 @@
         const recordBtn = document.getElementById('record-btn');
         const displayLocation = document.getElementById('display-location');
         const displaySequence = document.getElementById('display-sequence');
+        const mapSelect = document.getElementById('map-select');
 
-        // --- 1. 地圖點擊邏輯 ---
+        // 地圖點擊邏輯
         mapContainer.addEventListener('click', (e) => {
             const rect = mapContainer.getBoundingClientRect();
             const x = Math.round(e.clientX - rect.left);
@@ -185,7 +188,7 @@
             recordBtn.disabled = false;
         });
 
-        // --- 2. 記錄行為點 (軌跡節點) ---
+        // 記錄軌跡點
         function recordPoint() {
             const sessionId = document.getElementById('session-id').value || '未編號';
             const groupType = document.getElementById('group-type-select').value;
@@ -201,59 +204,49 @@
                 action: action,
                 x: lastSelectedCoord.x,
                 y: lastSelectedCoord.y,
-                map: document.getElementById('map-select').value
+                map: mapSelect.options[mapSelect.selectedIndex].text
             };
 
-            // 儲存至暫時路徑與持久日誌
             currentPath.push(pointData);
             logs.unshift(pointData);
             localStorage.setItem(LOG_KEY, JSON.stringify(logs));
 
-            // 更新 UI
             displaySequence.textContent = `第 ${currentPath.length} 點`;
             lastSelectedCoord = null;
             recordBtn.disabled = true;
             renderVisuals();
-            
-            console.log("已記錄節點:", pointData);
         }
 
-        // --- 3. 視覺化渲染 (Markers & Lines) ---
+        // 視覺化渲染
         function renderVisuals() {
-            // 清除舊有的視覺元素
             mapContainer.querySelectorAll('.marker, .path-line, .temp-marker').forEach(el => el.remove());
 
-            // A. 繪製已儲存的路徑連線 (Trajectory Lines)
             for (let i = 0; i < currentPath.length - 1; i++) {
                 const start = currentPath[i];
                 const end = currentPath[i+1];
                 drawLine(start.x, start.y, end.x, end.y);
             }
 
-            // B. 繪製軌跡點 (Markers)
             currentPath.forEach((p, idx) => {
                 const marker = document.createElement('div');
                 marker.className = 'marker';
                 marker.style.left = p.x + 'px';
                 marker.style.top = p.y + 'px';
                 marker.textContent = p.sequence;
-                marker.title = `${p.action} (${p.groupType})`;
                 mapContainer.appendChild(marker);
             });
 
-            // C. 繪製當前選取點 (尚未記錄的點)
             if (lastSelectedCoord) {
                 const temp = document.createElement('div');
                 temp.className = 'marker temp-marker';
                 temp.style.left = lastSelectedCoord.x + 'px';
                 temp.style.top = lastSelectedCoord.y + 'px';
-                temp.style.backgroundColor = '#ef4444'; // 紅色表示預備點
+                temp.style.backgroundColor = '#ef4444';
                 temp.textContent = '?';
                 mapContainer.appendChild(temp);
             }
         }
 
-        // 繪線工具函式
         function drawLine(x1, y1, x2, y2) {
             const line = document.createElement('div');
             line.className = 'path-line';
@@ -267,7 +260,6 @@
             mapContainer.appendChild(line);
         }
 
-        // --- 4. 結束個案 ---
         function finishSession() {
             if (confirm("確定要結束此個案觀察嗎？這將會清除畫面上的路徑圖以進行下一組觀察。")) {
                 currentPath = [];
@@ -279,11 +271,14 @@
             }
         }
 
-        // --- 5. 地圖切換 ---
-        document.getElementById('map-select').addEventListener('change', (e) => {
-            document.querySelectorAll('.map-image').forEach(img => img.classList.remove('active'));
-            document.getElementById(e.target.value).classList.add('active');
-            // 切換地圖時建議清除當前路徑，因為座標系不同
+        // 切換地圖邏輯 (恢復原始 ID 匹配)
+        mapSelect.addEventListener('change', (e) => {
+            const selectedID = e.target.value;
+            document.querySelectorAll('.map-image').forEach(img => {
+                img.classList.remove('active');
+                if (img.id === selectedID) img.classList.add('active');
+            });
+            // 切換館區視同切換情境，建議重置當前路徑
             currentPath = [];
             renderVisuals();
         });
