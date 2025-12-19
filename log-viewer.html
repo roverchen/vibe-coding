@@ -2,48 +2,107 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>日誌分析 - 海生館研究系統</title>
+    <title>紀錄模式 - 海生館研究系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #map-container { position: relative; display: inline-block; cursor: crosshair; border: 2px solid #e2e8f0; width: 100%; border-radius: 8px; background: #f1f5f9; }
+        .map-image { max-width: 100%; height: auto; display: none; }
+        .map-image.active { display: block; }
+        .marker { position: absolute; width: 20px; height: 20px; background: #4f46e5; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); color: white; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 10; }
+        .path-line { position: absolute; height: 2px; background: #818cf8; transform-origin: 0 50%; pointer-events: none; opacity: 0.6; }
+    </style>
 </head>
-<body class="bg-slate-100 p-8">
-    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
-        <header class="bg-slate-800 p-6 text-white flex justify-between">
-            <h1 class="font-bold">📋 數據日誌</h1>
-            <button onclick="clearData()" class="bg-rose-600 px-4 py-1 rounded text-xs font-bold">全部清除</button>
+<body class="bg-slate-50 p-4">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-4 bg-white p-4 rounded-lg shadow-sm">
+            <h1 class="text-xl font-bold text-slate-700">🔴 現場紀錄</h1>
+            <button onclick="location.href='log-viewer.html'" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold text-sm">
+                查看日誌 (LOG)
+            </button>
         </header>
-        <div class="p-4 border-b">
-            <button onclick="history.back()" class="text-indigo-600 font-bold">⬅️ 返回紀錄畫面 (或按 Back 鍵)</button>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white p-4 rounded-lg shadow-sm border space-y-4">
+                <input type="text" id="sid" placeholder="個案編號" class="w-full p-2 border rounded">
+                <div class="bg-slate-50 p-3 rounded border border-dashed">
+                    <p id="pos-display" class="text-xs font-mono text-slate-500">請點擊地圖...</p>
+                    <button id="save-btn" onclick="save()" disabled class="w-full mt-2 bg-indigo-500 text-white py-2 rounded disabled:bg-slate-200">儲存點位</button>
+                </div>
+                <button onclick="if(confirm('清空目前畫布？')){path=[];render();}" class="w-full text-xs text-rose-400">清空目前動線</button>
+            </div>
+            
+            <div class="md:col-span-2 bg-white p-2 rounded-lg shadow-sm border">
+                <div id="map-container">
+                    <img id="m1" class="map-image active" src="https://ws.nmmba.gov.tw/001/Upload/226/ckfile/f9f83808-8917-4d91-be95-98955736b763.jpg">
+                </div>
+            </div>
         </div>
-        <table class="w-full text-left">
-            <thead class="bg-slate-50 text-xs">
-                <tr><th class="p-4">時間</th><th class="p-4">編號</th><th class="p-4">行為</th><th class="p-4">座標</th></tr>
-            </thead>
-            <tbody id="table-body"></tbody>
-        </table>
     </div>
 
     <script>
-        const LOG_KEY = 'nmmba_research_v1';
-        function renderTable() {
-            const logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
-            const body = document.getElementById('table-body');
-            body.innerHTML = logs.map(l => `
-                <tr class="border-b text-sm">
-                    <td class="p-4">${l.timestamp}</td>
-                    <td class="p-4 font-bold">${l.sessionId}</td>
-                    <td class="p-4">${l.action}</td>
-                    <td class="p-4 text-slate-400">${l.x}, ${l.y}</td>
-                </tr>
-            `).join('');
+        const KEY = 'NMMBA_DATA';
+        let path = [];
+        let tempCoord = null;
+
+        // 【核心】每 0.5 秒檢查一次資料庫，如果被 Log 頁面刪除了，這裡也要清空
+        setInterval(() => {
+            const data = localStorage.getItem(KEY);
+            if (!data || data === '[]') {
+                if (path.length > 0) {
+                    path = [];
+                    render();
+                    console.log("偵測到資料庫已清空，同步重置畫布。");
+                }
+            }
+        }, 500);
+
+        const container = document.getElementById('map-container');
+        container.onclick = (e) => {
+            const rect = container.getBoundingClientRect();
+            tempCoord = { x: Math.round(e.clientX - rect.left), y: Math.round(e.clientY - rect.top) };
+            document.getElementById('pos-display').innerText = `座標: ${tempCoord.x}, ${tempCoord.y}`;
+            document.getElementById('save-btn').disabled = false;
+            render();
+        };
+
+        function save() {
+            const point = { 
+                id: document.getElementById('sid').value || 'N/A',
+                seq: path.length + 1,
+                x: tempCoord.x, y: tempCoord.y 
+            };
+            path.push(point);
+            const all = JSON.parse(localStorage.getItem(KEY) || '[]');
+            all.unshift(point);
+            localStorage.setItem(KEY, JSON.stringify(all));
+            tempCoord = null;
+            document.getElementById('save-btn').disabled = true;
+            render();
         }
 
-        function clearData() {
-            if (confirm("確定清除資料庫？此動作無法復原。")) {
-                localStorage.removeItem(LOG_KEY);
-                renderTable();
+        function render() {
+            container.querySelectorAll('.marker, .path-line').forEach(el => el.remove());
+            path.forEach((p, i) => {
+                const m = document.createElement('div');
+                m.className = 'marker'; m.style.left = p.x+'px'; m.style.top = p.y+'px';
+                m.innerText = p.seq; container.appendChild(m);
+                if (i > 0) drawLine(path[i-1], p);
+            });
+            if (tempCoord) {
+                const t = document.createElement('div');
+                t.className = 'marker'; t.style.background = 'red';
+                t.style.left = tempCoord.x+'px'; t.style.top = tempCoord.y+'px';
+                t.innerText = '+'; container.appendChild(t);
             }
         }
-        window.onload = renderTable;
+
+        function drawLine(p1, p2) {
+            const l = document.createElement('div'); l.className = 'path-line';
+            const d = Math.sqrt(Math.pow(p2.x-p1.x,2)+Math.pow(p2.y-p1.y,2));
+            const a = Math.atan2(p2.y-p1.y, p2.x-p1.x) * 180 / Math.PI;
+            l.style.width = d+'px'; l.style.left = p1.x+'px'; l.style.top = p1.y+'px';
+            l.style.transform = `rotate(${a}deg)`; container.appendChild(l);
+        }
     </script>
 </body>
 </html>
