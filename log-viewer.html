@@ -2,95 +2,71 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>數據分析日誌</title>
+    <title>數據日誌</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-100 p-4 md:p-12">
-    <div class="max-w-4xl mx-auto space-y-6">
-        
-        <button onclick="history.back()" class="w-full bg-white p-4 rounded-2xl shadow-sm border-2 border-slate-200 flex items-center justify-center gap-2 hover:bg-slate-50 transition-all active:scale-[0.98]">
-            <span class="text-2xl">⬅️</span>
-            <span class="text-indigo-600 font-black">返回地圖紀錄畫面 (Back)</span>
+<body class="bg-slate-100 p-6">
+    <div class="max-w-5xl mx-auto space-y-4">
+        <button onclick="history.back()" class="w-full bg-white p-4 rounded-xl shadow-sm border font-bold text-indigo-600">
+            ⬅️ 返回紀錄畫面 (Back)
         </button>
 
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
-            <header class="bg-slate-800 p-6 text-white flex justify-between items-center">
-                <div>
-                    <h2 class="font-black text-xl tracking-tight">📋 觀眾行為歷史數據</h2>
-                    <p id="counter" class="text-slate-400 text-xs mt-1 font-mono">Loading data...</p>
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="exportCSV()" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-xl text-xs font-bold transition-colors">📥 導出 CSV</button>
-                    <button onclick="clearAll()" class="bg-rose-500 hover:bg-rose-600 px-4 py-2 rounded-xl text-xs font-bold transition-colors">🗑️ 全部清空</button>
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border">
+            <header class="bg-slate-800 p-5 text-white flex justify-between items-center">
+                <h2 class="font-bold">📋 研究數據列表</h2>
+                <div class="flex gap-2">
+                    <button onclick="exportCSV()" class="bg-emerald-600 px-3 py-1 rounded text-xs font-bold">導出 CSV</button>
+                    <button onclick="clearAll()" class="bg-rose-500 px-3 py-1 rounded text-xs font-bold">全部清空</button>
                 </div>
             </header>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-50 border-b text-slate-400 text-[10px] uppercase font-black">
-                        <tr>
-                            <th class="p-5">時間軸</th>
-                            <th class="p-5">個案編號</th>
-                            <th class="p-5">紀錄行為</th>
-                            <th class="p-5">座標 (X,Y)</th>
-                            <th class="p-5">所屬館區</th>
-                        </tr>
-                    </thead>
-                    <tbody id="list-body" class="divide-y divide-slate-100">
-                        </tbody>
-                </table>
-            </div>
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b text-xs text-slate-500">
+                    <tr>
+                        <th class="p-4">時間</th>
+                        <th class="p-4">編號</th>
+                        <th class="p-4">組別(組合)</th>
+                        <th class="p-4">序號</th>
+                        <th class="p-4">行為</th>
+                        <th class="p-4">座標</th>
+                        <th class="p-4">館區</th>
+                    </tr>
+                </thead>
+                <tbody id="list" class="divide-y"></tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        const KEY = 'NMMBA_DATA_STORAGE';
-
-        function load() {
+        const KEY = 'NMMBA_RESEARCH_FINAL';
+        function show() {
             const data = JSON.parse(localStorage.getItem(KEY) || '[]');
-            const container = document.getElementById('list-body');
-            document.getElementById('counter').innerText = `目前總計: ${data.length} 筆資料`;
-
-            if(data.length === 0) {
-                container.innerHTML = `<tr><td colspan="5" class="p-20 text-center text-slate-300 font-bold italic text-lg">目前尚無紀錄數據</td></tr>`;
-                return;
-            }
-
-            container.innerHTML = data.map(d => `
-                <tr class="hover:bg-indigo-50 transition-colors group">
-                    <td class="p-5 font-mono text-xs text-slate-400">${d.time}</td>
-                    <td class="p-5 font-black text-slate-700">
-                        ${d.id} <span class="text-indigo-300 text-[10px] ml-1">#${d.seq}</span>
-                    </td>
-                    <td class="p-5 font-bold text-slate-600">${d.action}</td>
-                    <td class="p-5 text-slate-400 font-mono text-xs italic">${d.x}, ${d.y}</td>
-                    <td class="p-5"><span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-md text-[10px] font-bold">${d.map}</span></td>
+            document.getElementById('list').innerHTML = data.map(d => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-4 text-slate-400 font-mono text-xs">${d.time}</td>
+                    <td class="p-4 font-bold text-slate-700">${d.id}</td>
+                    <td class="p-4"><span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-bold">${d.group}</span></td>
+                    <td class="p-4 font-mono">#${d.seq}</td>
+                    <td class="p-4 font-medium">${d.action}</td>
+                    <td class="p-4 text-slate-400 text-xs">${d.x}, ${d.y}</td>
+                    <td class="p-4 text-slate-500 text-xs">${d.map}</td>
                 </tr>
             `).join('');
         }
-
         function clearAll() {
-            if (confirm("⚠️ 注意：這將永久刪除瀏覽器中的所有紀錄！\n這也會讓地圖上的動線同步消失。")) {
-                localStorage.removeItem(KEY);
-                location.reload(); // 立即重新整理頁面
-            }
+            if (confirm("確定清空？")) { localStorage.removeItem(KEY); location.reload(); }
         }
-
         function exportCSV() {
             const data = JSON.parse(localStorage.getItem(KEY) || '[]');
-            if(data.length === 0) return alert("無數據可供導出");
-            let csv = "\uFEFF時間,個案,序號,行為,X,Y,館區\n";
-            data.forEach(d => {
-                csv += `${d.time},${d.id},${d.seq},${d.action},${d.x},${d.y},${d.map}\n`;
-            });
+            if(!data.length) return alert("無數據");
+            let csv = "\uFEFF時間,編號,組別,序號,行為,X,Y,館區\n";
+            data.forEach(d => csv += `${d.time},${d.id},${d.group},${d.seq},${d.action},${d.x},${d.y},${d.map}\n`);
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = `海生館研究_數據導出_${new Date().toISOString().slice(0,10)}.csv`;
+            link.download = `研究數據.csv`;
             link.click();
         }
-
-        window.onload = load;
+        window.onload = show;
     </script>
 </body>
 </html>
