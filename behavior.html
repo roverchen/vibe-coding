@@ -10,6 +10,8 @@
         .map-image.active { display: block; }
         .marker { position: absolute; width: 22px; height: 22px; background: #4f46e5; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); color: white; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         .path-line { position: absolute; height: 2px; background: #818cf8; transform-origin: 0 50%; pointer-events: none; opacity: 0.6; }
+        /* 讓新增選項看起來不一樣 */
+        .add-option { color: #4f46e5; font-weight: bold; background-color: #f5f3ff; }
     </style>
 </head>
 <body class="bg-slate-50 p-4">
@@ -40,20 +42,24 @@
                     <label class="block text-xs font-black text-slate-500 uppercase">2. 觀察對象資訊</label>
                     <input type="text" id="sid" placeholder="觀察個案編號 (例: A01)" class="w-full p-2.5 border rounded-lg text-sm">
                     
-                    <select id="group-type" class="w-full p-2.5 border rounded-lg text-sm bg-amber-50 border-amber-100 font-medium">
+                    <select id="group-type" onchange="handleDynamicSelect(this, 'CUSTOM_GROUPS')" class="w-full p-2.5 border rounded-lg text-sm bg-amber-50 border-amber-100 font-medium">
                         <option value="">-- 選擇團體組合 (組別) --</option>
                         <option value="1A1C">1大1小 (1A1C)</option>
                         <option value="1A2C">1大2小 (1A2C)</option>
                         <option value="2A1C">2大1小 (2A1C)</option>
                         <option value="2A2C">2大2小 (2A2C)</option>
-                        <option value="其他">其他</option>
+                        <optgroup label="自定義項目" id="custom-group-list"></optgroup>
+                        <option value="ADD_NEW" class="add-option">+ 新增成員組合...</option>
                     </select>
 
-                    <select id="action-select" class="w-full p-2.5 border rounded-lg text-sm">
+                    <select id="action-select" onchange="handleDynamicSelect(this, 'CUSTOM_ACTIONS')" class="w-full p-2.5 border rounded-lg text-sm">
+                        <option value="">-- 選擇行為類型 --</option>
                         <option value="共同參與">共同參與</option>
                         <option value="引導說明">引導說明</option>
                         <option value="拍照錄影">拍照錄影</option>
                         <option value="休息等待">休息等待</option>
+                        <optgroup label="自定義行為" id="custom-action-list"></optgroup>
+                        <option value="ADD_NEW" class="add-option">+ 新增行為項目...</option>
                     </select>
                     
                     <div class="bg-slate-50 p-4 rounded-xl border border-dashed text-center">
@@ -85,6 +91,41 @@
         let path = [];
         let tempCoord = null;
 
+        // 初始化：載入使用者自定義的項目
+        window.onload = () => {
+            loadCustomOptions('CUSTOM_GROUPS', 'custom-group-list');
+            loadCustomOptions('CUSTOM_ACTIONS', 'custom-action-list');
+        };
+
+        // 處理動態新增邏輯
+        function handleDynamicSelect(selectElement, storageKey) {
+            if (selectElement.value === 'ADD_NEW') {
+                const newItem = prompt("請輸入新的項目名稱：");
+                if (newItem && newItem.trim() !== "") {
+                    // 1. 存入 localStorage
+                    const customList = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                    if (!customList.includes(newItem)) {
+                        customList.push(newItem);
+                        localStorage.setItem(storageKey, JSON.stringify(customList));
+                    }
+                    // 2. 重新載入選單
+                    const targetId = storageKey === 'CUSTOM_GROUPS' ? 'custom-group-list' : 'custom-action-list';
+                    loadCustomOptions(storageKey, targetId);
+                    // 3. 自動選中剛新增的項目
+                    selectElement.value = newItem;
+                } else {
+                    selectElement.value = ""; // 取消選擇
+                }
+            }
+        }
+
+        // 載入自定義項目到選單中
+        function loadCustomOptions(storageKey, targetElementId) {
+            const customList = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            const container = document.getElementById(targetElementId);
+            container.innerHTML = customList.map(item => `<option value="${item}">${item}</option>`).join('');
+        }
+
         // 同步檢查機制
         setInterval(() => {
             const data = localStorage.getItem(KEY);
@@ -108,13 +149,15 @@
 
         function save() {
             const group = document.getElementById('group-type').value;
-            if(!group) { alert("請選擇組別(團體組合)！"); return; }
+            const action = document.getElementById('action-select').value;
+            if(!group) { alert("請選擇組別！"); return; }
+            if(!action) { alert("請選擇行為項目！"); return; }
 
             const point = { 
                 id: document.getElementById('sid').value || '未編號',
                 group: group,
                 seq: path.length + 1,
-                action: document.getElementById('action-select').value,
+                action: action,
                 map: document.getElementById('map-select').options[document.getElementById('map-select').selectedIndex].text,
                 x: tempCoord.x, y: tempCoord.y,
                 time: new Date().toLocaleTimeString()
