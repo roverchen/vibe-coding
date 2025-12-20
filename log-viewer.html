@@ -2,167 +2,179 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>研究數據報表系統</title>
+    <title>研究數據報表系統 - 週期分析</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .report-card { background: white; border-radius: 1rem; padding: 1.5rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 2rem; }
-        .table-header { @apply bg-slate-100 text-slate-600 text-xs font-bold uppercase p-3 border-b; }
+        .table-header { @apply bg-slate-100 text-slate-600 text-[11px] font-bold uppercase p-3 border-b; }
         .table-cell { @apply p-3 border-b text-sm text-slate-700; }
+        @media print { .no-print { display: none; } }
     </style>
 </head>
-<body class="bg-slate-50 p-6 md:p-12">
+<body class="bg-slate-50 p-4 md:p-8">
     <div class="max-w-5xl mx-auto">
         
-        <div class="flex justify-between items-center mb-8">
-            <button onclick="history.back()" class="bg-white px-6 py-2 rounded-xl shadow-sm border font-bold text-indigo-600 hover:bg-indigo-50 transition-all">
-                ⬅️ 返回紀錄
-            </button>
-            <div class="flex gap-2">
-                <button onclick="window.print()" class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold">列印報表</button>
-                <button onclick="clearData()" class="bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-bold">清空數據</button>
+        <div class="no-print space-y-4 mb-8">
+            <div class="flex justify-between items-center">
+                <button onclick="history.back()" class="text-indigo-600 font-bold flex items-center gap-1">
+                    ⬅️ 返回紀錄
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm">列印報表</button>
+                </div>
+            </div>
+
+            <div class="bg-indigo-600 p-6 rounded-2xl shadow-lg text-white">
+                <h2 class="text-lg font-bold mb-4 flex items-center gap-2">📅 報表時間週期篩選</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <button onclick="filterData('day')" class="bg-white/20 hover:bg-white/40 p-3 rounded-xl border border-white/30 transition-all font-bold">日報 (今日)</button>
+                    <button onclick="filterData('week')" class="bg-white/20 hover:bg-white/40 p-3 rounded-xl border border-white/30 transition-all font-bold">週報 (近7日)</button>
+                    <button onclick="filterData('month')" class="bg-white/20 hover:bg-white/40 p-3 rounded-xl border border-white/30 transition-all font-bold">月報 (近30日)</button>
+                    <button onclick="filterData('year')" class="bg-white/20 hover:bg-white/40 p-3 rounded-xl border border-white/30 transition-all font-bold">年報 (今年)</button>
+                </div>
+                <p id="filter-status" class="mt-4 text-indigo-100 text-sm italic">正在顯示：所有歷史數據</p>
             </div>
         </div>
 
-        <h1 class="text-3xl font-black text-slate-800 mb-8 border-l-8 border-indigo-600 pl-4">觀眾行為研究分析報表</h1>
+        <div id="report-content">
+            <h1 id="report-title" class="text-3xl font-black text-slate-800 mb-8 border-l-8 border-indigo-600 pl-4">觀眾行為研究分析報表</h1>
 
-        <div class="report-card">
-            <h3 class="font-black text-indigo-600 mb-4">表 4-1：成員組合紀錄次數表</h3>
-            <table class="w-full text-left">
-                <thead>
-                    <tr>
-                        <th class="table-header">成員組合類型</th>
-                        <th class="table-header text-center">紀錄次數 (n)</th>
-                        <th class="table-header text-center">百分比 (%)</th>
-                    </tr>
-                </thead>
-                <tbody id="table-4-1"></tbody>
-            </table>
+            <div class="report-card">
+                <h3 class="font-black text-indigo-600 mb-4 text-lg">表 4-1：成員組合紀錄次數表</h3>
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr>
+                            <th class="table-header">成員組合類型</th>
+                            <th class="table-header text-center">紀錄次數 (n)</th>
+                            <th class="table-header text-center">百分比 (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-4-1"></tbody>
+                </table>
+            </div>
+
+            <div class="report-card">
+                <h3 class="font-black text-indigo-600 mb-4 text-lg">表 4-6：家長觀眾行為次數統計</h3>
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr>
+                            <th class="table-header">行為項目</th>
+                            <th class="table-header text-center">總計次數</th>
+                            <th class="table-header text-center">佔比</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-4-6"></tbody>
+                </table>
+            </div>
+
+            <div class="report-card">
+                <h3 class="font-black text-indigo-600 mb-4 text-lg">表 4-7：體驗動線類型分布</h3>
+                <table class="w-full text-left">
+                    <thead>
+                        <tr>
+                            <th class="table-header">動線類型</th>
+                            <th class="table-header text-center">個案數</th>
+                            <th class="table-header">特徵說明</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-4-7">
+                        <tr><td class="table-cell font-bold">直行 (Linear)</td><td class="table-cell text-center" id="path-linear">0</td><td class="table-cell text-xs text-slate-400">依序前進，無重複回頭路徑</td></tr>
+                        <tr><td class="table-cell font-bold">環狀 (Loop)</td><td class="table-cell text-center" id="path-loop">0</td><td class="table-cell text-xs text-slate-400">繞行空間一圈後回到起點附近</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-
-        <div class="report-card">
-            <h3 class="font-black text-indigo-600 mb-4">表 4-4：家長觀眾行為類型</h3>
-            <table class="w-full text-left">
-                <thead>
-                    <tr>
-                        <th class="table-header">行為大類</th>
-                        <th class="table-header">包含行為類型（目前紀錄）</th>
-                    </tr>
-                </thead>
-                <tbody id="table-4-4">
-                    <tr><td class="table-cell font-bold">對內社會互動</td><td class="table-cell" id="cat-intra"></td></tr>
-                    <tr><td class="table-cell font-bold">對外社會互動</td><td class="table-cell" id="cat-inter">-</td></tr>
-                    <tr><td class="table-cell font-bold">環境互動</td><td class="table-cell" id="cat-env">-</td></tr>
-                    <tr><td class="table-cell font-bold">個人行動</td><td class="table-cell" id="cat-personal"></td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="report-card">
-            <h3 class="font-black text-indigo-600 mb-4">表 4-6：家長觀眾行為次數排行</h3>
-            <table class="w-full text-left">
-                <thead>
-                    <tr>
-                        <th class="table-header">行為項目</th>
-                        <th class="table-header text-center">總計次數</th>
-                        <th class="table-header text-center">佔比</th>
-                    </tr>
-                </thead>
-                <tbody id="table-4-6"></tbody>
-            </table>
-        </div>
-
-        <div class="report-card">
-            <h3 class="font-black text-indigo-600 mb-4">表 4-7：體驗動線初步分布</h3>
-            <table class="w-full text-left">
-                <thead>
-                    <tr>
-                        <th class="table-header">動線類型 (預估)</th>
-                        <th class="table-header text-center">個案數</th>
-                        <th class="table-header">特徵說明</th>
-                    </tr>
-                </thead>
-                <tbody id="table-4-7">
-                    <tr><td class="table-cell">直行 (Linear)</td><td class="table-cell text-center" id="path-linear">0</td><td class="table-cell text-xs">依序前進，無重複回頭路徑</td></tr>
-                    <tr><td class="table-cell">環狀 (Loop)</td><td class="table-cell text-center" id="path-loop">0</td><td class="table-cell text-xs">繞行空間後回到起點附近</td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <p class="text-slate-400 text-[10px] text-right italic">註：部分表格 (如 4-5) 涉及空間定性比較，建議手動填寫於書面報告中 。</p>
     </div>
 
     <script>
         const KEY = 'NMMBA_RESEARCH_FINAL';
 
-        function generateReports() {
+        function filterData(period) {
             const rawData = JSON.parse(localStorage.getItem(KEY) || '[]');
-            if (rawData.length === 0) return;
+            const now = new Date();
+            let filtered = [];
+            let periodText = "";
 
-            // --- 表 4-1 分析 ---
+            filtered = rawData.filter(d => {
+                // 將存儲的時間字串轉回 Date 物件進行比較
+                // 註：若紀錄時僅存時分秒，此處需確保紀錄時有存日期
+                const entryDate = new Date(); 
+                const [h, m, s] = d.time.split(':');
+                entryDate.setHours(h, m, s);
+
+                if (period === 'day') {
+                    periodText = "今日報表";
+                    return entryDate.toDateString() === now.toDateString();
+                } else if (period === 'week') {
+                    periodText = "週報 (近 7 日)";
+                    const sevenDaysAgo = new Date().setDate(now.getDate() - 7);
+                    return entryDate >= sevenDaysAgo;
+                } else if (period === 'month') {
+                    periodText = "月報 (近 30 日)";
+                    const thirtyDaysAgo = new Date().setDate(now.getDate() - 30);
+                    return entryDate >= thirtyDaysAgo;
+                } else if (period === 'year') {
+                    periodText = "年報 (今年)";
+                    return entryDate.getFullYear() === now.getFullYear();
+                }
+                return true;
+            });
+
+            document.getElementById('filter-status').innerText = `正在顯示：${periodText} (${filtered.length} 筆資料)`;
+            document.getElementById('report-title').innerText = `觀眾行為研究分析 - ${periodText}`;
+            renderReports(filtered);
+        }
+
+        function renderReports(data) {
+            if (data.length === 0) {
+                alert("該時段內無數據資料！");
+                return;
+            }
+
+            // --- 表 4-1 ---
             const groupMap = { '1A1C': 0, '1A2C': 0, '2A1C': 0, '2A2C': 0, '其他': 0 };
-            const uniqueCases = [...new Set(rawData.map(d => d.id))];
-            
-            uniqueCases.forEach(id => {
-                const firstPoint = rawData.find(d => d.id === id);
+            const uniqueCaseIds = [...new Set(data.map(d => d.id))];
+            uniqueCaseIds.forEach(id => {
+                const firstPoint = data.find(d => d.id === id);
                 if (groupMap.hasOwnProperty(firstPoint.group)) groupMap[firstPoint.group]++;
             });
 
-            const t41 = document.getElementById('table-4-1');
-            t41.innerHTML = Object.entries(groupMap).map(([key, val]) => `
+            document.getElementById('table-4-1').innerHTML = Object.entries(groupMap).map(([key, val]) => `
                 <tr>
-                    <td class="table-cell">${key}</td>
+                    <td class="table-cell font-medium">${key}</td>
                     <td class="table-cell text-center">${val}</td>
-                    <td class="table-cell text-center">${((val/uniqueCases.length)*100 || 0).toFixed(1)}%</td>
+                    <td class="table-cell text-center font-mono">${((val/uniqueCaseIds.length)*100 || 0).toFixed(1)}%</td>
                 </tr>
             `).join('');
 
-            // --- 表 4-4 & 4-6 分析 ---
+            // --- 表 4-6 ---
             const actionCounts = {};
-            const categories = { intra: [], personal: [] };
-
-            rawData.forEach(d => {
-                actionCounts[d.action] = (actionCounts[d.action] || 0) + 1;
-                // 自動歸類範例
-                if (["共同參與", "引導說明"].includes(d.action)) {
-                    if (!categories.intra.includes(d.action)) categories.intra.push(d.action);
-                } else if (["休息等待"].includes(d.action)) {
-                    if (!categories.personal.includes(d.action)) categories.personal.push(d.action);
-                }
-            });
-
-            document.getElementById('cat-intra').innerText = categories.intra.join('、') || '無資料';
-            document.getElementById('cat-personal').innerText = categories.personal.join('、') || '無資料';
-
-            const t46 = document.getElementById('table-4-6');
-            t46.innerHTML = Object.entries(actionCounts)
+            data.forEach(d => actionCounts[d.action] = (actionCounts[d.action] || 0) + 1);
+            document.getElementById('table-4-6').innerHTML = Object.entries(actionCounts)
                 .sort((a,b) => b[1] - a[1])
                 .map(([key, val]) => `
                 <tr>
-                    <td class="table-cell">${key}</td>
+                    <td class="table-cell font-medium">${key}</td>
                     <td class="table-cell text-center">${val}</td>
-                    <td class="table-cell text-center">${((val/rawData.length)*100).toFixed(1)}%</td>
+                    <td class="table-cell text-center font-mono">${((val/data.length)*100).toFixed(1)}%</td>
                 </tr>
             `).join('');
-            
-            // --- 表 4-7 動線簡易判別 ---
-            // 邏輯：如果個案紀錄點超過 3 個，預估為環狀，否則為直行
-            let linearCount = 0, loopCount = 0;
-            uniqueCases.forEach(id => {
-                const points = rawData.filter(d => d.id === id);
-                if (points.length > 3) loopCount++; else linearCount++;
+
+            // --- 表 4-7 ---
+            let linear = 0, loop = 0;
+            uniqueCaseIds.forEach(id => {
+                const pCount = data.filter(d => d.id === id).length;
+                if (pCount > 3) loop++; else linear++;
             });
-            document.getElementById('path-linear').innerText = linearCount;
-            document.getElementById('path-loop').innerText = loopCount;
+            document.getElementById('path-linear').innerText = linear;
+            document.getElementById('path-loop').innerText = loop;
         }
 
-        function clearData() {
-            if (confirm("確定刪除所有原始數據嗎？報表也將同步清空。")) {
-                localStorage.removeItem(KEY);
-                location.reload();
-            }
-        }
-
-        window.onload = generateReports;
+        // 初始載入顯示全部
+        window.onload = () => {
+            const data = JSON.parse(localStorage.getItem(KEY) || '[]');
+            renderReports(data);
+        };
     </script>
 </body>
 </html>
