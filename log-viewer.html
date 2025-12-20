@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>研究數據報表系統 - 週期分析</title>
+    <title>研究數據報表系統 - 修正版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .report-card { background: white; border-radius: 1rem; padding: 1.5rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 2rem; }
@@ -16,23 +16,24 @@
         
         <div class="no-print space-y-4 mb-8">
             <div class="flex justify-between items-center">
-                <button onclick="history.back()" class="text-indigo-600 font-bold flex items-center gap-1">
+                <button onclick="history.back()" class="text-indigo-600 font-bold flex items-center gap-1 hover:underline">
                     ⬅️ 返回紀錄
                 </button>
                 <div class="flex gap-2">
-                    <button onclick="window.print()" class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm">列印報表</button>
+                    <button onclick="window.print()" class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold">列印報表</button>
                 </div>
             </div>
 
             <div class="bg-indigo-600 p-6 rounded-2xl shadow-lg text-white">
                 <h2 class="text-lg font-bold mb-4 flex items-center gap-2">📅 報表時間週期篩選</h2>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <button onclick="filterData('all')" class="bg-white/20 hover:bg-white/40 p-3 rounded-xl border border-white/30 transition-all font-bold">全部歷史</button>
                     <button onclick="filterData('day')" class="bg-white/20 hover:bg-white/40 p-3 rounded-xl border border-white/30 transition-all font-bold">日報 (今日)</button>
-                    <button onclick="filterData('week')" class="bg-white/20 hover:bg-white/40 p-3 rounded-xl border border-white/30 transition-all font-bold">週報 (近7日)</button>
-                    <button onclick="filterData('month')" class="bg-white/20 hover:bg-white/40 p-3 rounded-xl border border-white/30 transition-all font-bold">月報 (近30日)</button>
+                    <button onclick="filterData('week')" class="bg-white/20 hover:bg-white/40 p-3 rounded-xl border border-white/30 transition-all font-bold">週報 (7日)</button>
+                    <button onclick="filterData('month')" class="bg-white/20 hover:bg-white/40 p-3 rounded-xl border border-white/30 transition-all font-bold">月報 (30日)</button>
                     <button onclick="filterData('year')" class="bg-white/20 hover:bg-white/40 p-3 rounded-xl border border-white/30 transition-all font-bold">年報 (今年)</button>
                 </div>
-                <p id="filter-status" class="mt-4 text-indigo-100 text-sm italic">正在顯示：所有歷史數據</p>
+                <p id="filter-status" class="mt-4 text-indigo-100 text-sm italic font-medium">載入中...</p>
             </div>
         </div>
 
@@ -40,12 +41,12 @@
             <h1 id="report-title" class="text-3xl font-black text-slate-800 mb-8 border-l-8 border-indigo-600 pl-4">觀眾行為研究分析報表</h1>
 
             <div class="report-card">
-                <h3 class="font-black text-indigo-600 mb-4 text-lg">表 4-1：成員組合紀錄次數表</h3>
+                <h3 class="font-black text-indigo-600 mb-4 text-lg border-b pb-2">表 4-1：成員組合紀錄次數表 (依個案計)</h3>
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr>
                             <th class="table-header">成員組合類型</th>
-                            <th class="table-header text-center">紀錄次數 (n)</th>
+                            <th class="table-header text-center">個案數 (n)</th>
                             <th class="table-header text-center">百分比 (%)</th>
                         </tr>
                     </thead>
@@ -54,13 +55,13 @@
             </div>
 
             <div class="report-card">
-                <h3 class="font-black text-indigo-600 mb-4 text-lg">表 4-6：家長觀眾行為次數統計</h3>
+                <h3 class="font-black text-indigo-600 mb-4 text-lg border-b pb-2">表 4-6：觀眾行為次數統計 (依總行為計)</h3>
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr>
                             <th class="table-header">行為項目</th>
                             <th class="table-header text-center">總計次數</th>
-                            <th class="table-header text-center">佔比</th>
+                            <th class="table-header text-center">佔比 (%)</th>
                         </tr>
                     </thead>
                     <tbody id="table-4-6"></tbody>
@@ -68,18 +69,18 @@
             </div>
 
             <div class="report-card">
-                <h3 class="font-black text-indigo-600 mb-4 text-lg">表 4-7：體驗動線類型分布</h3>
+                <h3 class="font-black text-indigo-600 mb-4 text-lg border-b pb-2">表 4-7：體驗動線類型分布</h3>
                 <table class="w-full text-left">
                     <thead>
                         <tr>
                             <th class="table-header">動線類型</th>
                             <th class="table-header text-center">個案數</th>
-                            <th class="table-header">特徵說明</th>
+                            <th class="table-header">初步特徵描述</th>
                         </tr>
                     </thead>
                     <tbody id="table-4-7">
-                        <tr><td class="table-cell font-bold">直行 (Linear)</td><td class="table-cell text-center" id="path-linear">0</td><td class="table-cell text-xs text-slate-400">依序前進，無重複回頭路徑</td></tr>
-                        <tr><td class="table-cell font-bold">環狀 (Loop)</td><td class="table-cell text-center" id="path-loop">0</td><td class="table-cell text-xs text-slate-400">繞行空間一圈後回到起點附近</td></tr>
+                        <tr><td class="table-cell font-bold">直行 (Linear)</td><td class="table-cell text-center font-bold" id="path-linear">0</td><td class="table-cell text-xs text-slate-400">觀察點少於 3 個，路徑簡單直覺。</td></tr>
+                        <tr><td class="table-cell font-bold">環狀 (Loop)</td><td class="table-cell text-center font-bold" id="path-loop">0</td><td class="table-cell text-xs text-slate-400">觀察點達 4 個以上，具備探索或回流特徵。</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -89,36 +90,49 @@
     <script>
         const KEY = 'NMMBA_RESEARCH_FINAL';
 
+        // 輔助函式：確保日期解析正確
+        function parseEntryDate(timeStr) {
+            // 優先嘗試 ISO 格式 (2025-12-20T10:00:00)
+            let d = new Date(timeStr);
+            if (!isNaN(d.getTime())) return d;
+            
+            // 如果只有時分秒 (10:00:00)，補上今日日期
+            const now = new Date();
+            const parts = timeStr.split(':');
+            if (parts.length >= 2) {
+                now.setHours(parseInt(parts[0]), parseInt(parts[1]), parts[2] ? parseInt(parts[2]) : 0);
+                return now;
+            }
+            return new Date();
+        }
+
         function filterData(period) {
             const rawData = JSON.parse(localStorage.getItem(KEY) || '[]');
             const now = new Date();
             let filtered = [];
             let periodText = "";
 
-            filtered = rawData.filter(d => {
-                // 將存儲的時間字串轉回 Date 物件進行比較
-                // 註：若紀錄時僅存時分秒，此處需確保紀錄時有存日期
-                const entryDate = new Date(); 
-                const [h, m, s] = d.time.split(':');
-                entryDate.setHours(h, m, s);
-
-                if (period === 'day') {
-                    periodText = "今日報表";
-                    return entryDate.toDateString() === now.toDateString();
-                } else if (period === 'week') {
-                    periodText = "週報 (近 7 日)";
-                    const sevenDaysAgo = new Date().setDate(now.getDate() - 7);
-                    return entryDate >= sevenDaysAgo;
-                } else if (period === 'month') {
-                    periodText = "月報 (近 30 日)";
-                    const thirtyDaysAgo = new Date().setDate(now.getDate() - 30);
-                    return entryDate >= thirtyDaysAgo;
-                } else if (period === 'year') {
-                    periodText = "年報 (今年)";
-                    return entryDate.getFullYear() === now.getFullYear();
-                }
-                return true;
-            });
+            if (period === 'all') {
+                filtered = rawData;
+                periodText = "所有歷史數據";
+            } else {
+                filtered = rawData.filter(d => {
+                    const entryDate = parseEntryDate(d.time);
+                    if (period === 'day') {
+                        periodText = "今日報表";
+                        return entryDate.toDateString() === now.toDateString();
+                    } else if (period === 'week') {
+                        periodText = "週報 (近 7 日)";
+                        return (now - entryDate) <= (7 * 24 * 60 * 60 * 1000);
+                    } else if (period === 'month') {
+                        periodText = "月報 (近 30 日)";
+                        return (now - entryDate) <= (30 * 24 * 60 * 60 * 1000);
+                    } else if (period === 'year') {
+                        periodText = "年報 (今年)";
+                        return entryDate.getFullYear() === now.getFullYear();
+                    }
+                });
+            }
 
             document.getElementById('filter-status').innerText = `正在顯示：${periodText} (${filtered.length} 筆資料)`;
             document.getElementById('report-title').innerText = `觀眾行為研究分析 - ${periodText}`;
@@ -126,55 +140,64 @@
         }
 
         function renderReports(data) {
+            const t41 = document.getElementById('table-4-1');
+            const t46 = document.getElementById('table-4-6');
+            
             if (data.length === 0) {
-                alert("該時段內無數據資料！");
+                t41.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-slate-400 italic">該區段無數據</td></tr>';
+                t46.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-slate-400 italic">該區段無數據</td></tr>';
+                document.getElementById('path-linear').innerText = 0;
+                document.getElementById('path-loop').innerText = 0;
                 return;
             }
 
-            // --- 表 4-1 ---
-            const groupMap = { '1A1C': 0, '1A2C': 0, '2A1C': 0, '2A2C': 0, '其他': 0 };
+            // --- 表 4-1：以個案為單位統計組合 ---
+            const groupCounts = {};
             const uniqueCaseIds = [...new Set(data.map(d => d.id))];
+            
             uniqueCaseIds.forEach(id => {
-                const firstPoint = data.find(d => d.id === id);
-                if (groupMap.hasOwnProperty(firstPoint.group)) groupMap[firstPoint.group]++;
+                const caseData = data.find(d => d.id === id);
+                const gName = caseData.group || "未分類";
+                groupCounts[gName] = (groupCounts[gName] || 0) + 1;
             });
 
-            document.getElementById('table-4-1').innerHTML = Object.entries(groupMap).map(([key, val]) => `
+            t41.innerHTML = Object.entries(groupCounts)
+                .sort((a,b) => b[1] - a[1]) // 數量多排前面
+                .map(([key, val]) => `
                 <tr>
-                    <td class="table-cell font-medium">${key}</td>
+                    <td class="table-cell font-bold text-indigo-900">${key}</td>
                     <td class="table-cell text-center">${val}</td>
-                    <td class="table-cell text-center font-mono">${((val/uniqueCaseIds.length)*100 || 0).toFixed(1)}%</td>
+                    <td class="table-cell text-center font-mono font-bold text-indigo-600">${((val/uniqueCaseIds.length)*100).toFixed(1)}%</td>
                 </tr>
             `).join('');
 
-            // --- 表 4-6 ---
+            // --- 表 4-6：以所有行為點位統計 ---
             const actionCounts = {};
-            data.forEach(d => actionCounts[d.action] = (actionCounts[d.action] || 0) + 1);
-            document.getElementById('table-4-6').innerHTML = Object.entries(actionCounts)
+            data.forEach(d => {
+                actionCounts[d.action] = (actionCounts[d.action] || 0) + 1;
+            });
+
+            t46.innerHTML = Object.entries(actionCounts)
                 .sort((a,b) => b[1] - a[1])
                 .map(([key, val]) => `
                 <tr>
                     <td class="table-cell font-medium">${key}</td>
                     <td class="table-cell text-center">${val}</td>
-                    <td class="table-cell text-center font-mono">${((val/data.length)*100).toFixed(1)}%</td>
+                    <td class="table-cell text-center font-mono font-bold text-emerald-600">${((val/data.length)*100).toFixed(1)}%</td>
                 </tr>
             `).join('');
 
-            // --- 表 4-7 ---
+            // --- 表 4-7：動線 ---
             let linear = 0, loop = 0;
             uniqueCaseIds.forEach(id => {
-                const pCount = data.filter(d => d.id === id).length;
-                if (pCount > 3) loop++; else linear++;
+                const count = data.filter(d => d.id === id).length;
+                if (count >= 4) loop++; else linear++;
             });
             document.getElementById('path-linear').innerText = linear;
             document.getElementById('path-loop').innerText = loop;
         }
 
-        // 初始載入顯示全部
-        window.onload = () => {
-            const data = JSON.parse(localStorage.getItem(KEY) || '[]');
-            renderReports(data);
-        };
+        window.onload = () => filterData('all');
     </script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>海生館研究紀錄系統</title>
+    <title>海生館研究紀錄系統 - 動態選單版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #map-container { position: relative; display: inline-block; cursor: crosshair; border: 2px solid #cbd5e1; width: 100%; border-radius: 12px; background: #f8fafc; overflow: hidden; }
@@ -10,24 +10,22 @@
         .map-image.active { display: block; }
         .marker { position: absolute; width: 22px; height: 22px; background: #4f46e5; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); color: white; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         .path-line { position: absolute; height: 2px; background: #818cf8; transform-origin: 0 50%; pointer-events: none; opacity: 0.6; }
-        /* 讓新增選項看起來不一樣 */
-        .add-option { color: #4f46e5; font-weight: bold; background-color: #f5f3ff; }
+        /* 強調新增選項 */
+        .add-option { color: #4f46e5; font-weight: 800; background-color: #f5f3ff; }
     </style>
 </head>
 <body class="bg-slate-50 p-4">
     <div class="max-w-[1300px] mx-auto">
         
         <header class="flex justify-between items-center mb-6 bg-white p-5 rounded-2xl shadow-sm border">
-            <h1 class="text-2xl font-black text-slate-800 tracking-tight">🔴 現場紀錄模式</h1>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight">🔴 現場紀錄模式 (支援自定義選單)</h1>
             <button onclick="location.href='log-viewer.html'" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-all">
-                📋 查看數據日誌 (LOG)
+                📋 查看數據報表
             </button>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-            
             <div class="md:col-span-4 space-y-4">
-                
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     <label class="block text-xs font-black text-indigo-600 mb-2 uppercase">1. 選擇館區</label>
                     <select id="map-select" onchange="changeMap(this.value)" class="w-full p-2.5 border rounded-lg bg-slate-50 text-sm font-bold">
@@ -42,24 +40,24 @@
                     <label class="block text-xs font-black text-slate-500 uppercase">2. 觀察對象資訊</label>
                     <input type="text" id="sid" placeholder="觀察個案編號 (例: A01)" class="w-full p-2.5 border rounded-lg text-sm">
                     
-                    <select id="group-type" onchange="handleDynamicSelect(this, 'CUSTOM_GROUPS')" class="w-full p-2.5 border rounded-lg text-sm bg-amber-50 border-amber-100 font-medium">
-                        <option value="">-- 選擇團體組合 (組別) --</option>
+                    <select id="group-type" onchange="checkNewOption(this, 'GROUP_DICT')" class="w-full p-2.5 border rounded-lg text-sm bg-amber-50 border-amber-100 font-medium">
+                        <option value="">-- 選擇成員組合 (組別) --</option>
                         <option value="1A1C">1大1小 (1A1C)</option>
                         <option value="1A2C">1大2小 (1A2C)</option>
                         <option value="2A1C">2大1小 (2A1C)</option>
                         <option value="2A2C">2大2小 (2A2C)</option>
-                        <optgroup label="自定義項目" id="custom-group-list"></optgroup>
-                        <option value="ADD_NEW" class="add-option">+ 新增成員組合...</option>
+                        <optgroup label="自定義組別" id="custom-groups"></optgroup>
+                        <option value="NEW" class="add-option">+ 新增其他組合...</option>
                     </select>
 
-                    <select id="action-select" onchange="handleDynamicSelect(this, 'CUSTOM_ACTIONS')" class="w-full p-2.5 border rounded-lg text-sm">
-                        <option value="">-- 選擇行為類型 --</option>
+                    <select id="action-select" onchange="checkNewOption(this, 'ACTION_DICT')" class="w-full p-2.5 border rounded-lg text-sm">
+                        <option value="">-- 選擇觀眾行為 --</option>
                         <option value="共同參與">共同參與</option>
                         <option value="引導說明">引導說明</option>
                         <option value="拍照錄影">拍照錄影</option>
                         <option value="休息等待">休息等待</option>
-                        <optgroup label="自定義行為" id="custom-action-list"></optgroup>
-                        <option value="ADD_NEW" class="add-option">+ 新增行為項目...</option>
+                        <optgroup label="自定義行為" id="custom-actions"></optgroup>
+                        <option value="NEW" class="add-option">+ 新增行為項目...</option>
                     </select>
                     
                     <div class="bg-slate-50 p-4 rounded-xl border border-dashed text-center">
@@ -87,51 +85,46 @@
     </div>
 
     <script>
-        const KEY = 'NMMBA_RESEARCH_FINAL';
+        const DATA_KEY = 'NMMBA_RESEARCH_FINAL';
         let path = [];
         let tempCoord = null;
 
-        // 初始化：載入使用者自定義的項目
+        // 初始化：載入歷史自定義選單
         window.onload = () => {
-            loadCustomOptions('CUSTOM_GROUPS', 'custom-group-list');
-            loadCustomOptions('CUSTOM_ACTIONS', 'custom-action-list');
+            refreshCustomSelect('GROUP_DICT', 'custom-groups');
+            refreshCustomSelect('ACTION_DICT', 'custom-actions');
         };
 
-        // 處理動態新增邏輯
-        function handleDynamicSelect(selectElement, storageKey) {
-            if (selectElement.value === 'ADD_NEW') {
-                const newItem = prompt("請輸入新的項目名稱：");
-                if (newItem && newItem.trim() !== "") {
-                    // 1. 存入 localStorage
-                    const customList = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                    if (!customList.includes(newItem)) {
-                        customList.push(newItem);
-                        localStorage.setItem(storageKey, JSON.stringify(customList));
+        // 核心邏輯：檢查是否選擇「新增項目」
+        function checkNewOption(select, dictKey) {
+            if (select.value === 'NEW') {
+                const newValue = prompt("請輸入新項目名稱：");
+                if (newValue && newValue.trim() !== "") {
+                    // 取得舊字典並加入新值
+                    let dict = JSON.parse(localStorage.getItem(dictKey) || "[]");
+                    if (!dict.includes(newValue)) {
+                        dict.push(newValue);
+                        localStorage.setItem(dictKey, JSON.stringify(dict));
                     }
-                    // 2. 重新載入選單
-                    const targetId = storageKey === 'CUSTOM_GROUPS' ? 'custom-group-list' : 'custom-action-list';
-                    loadCustomOptions(storageKey, targetId);
-                    // 3. 自動選中剛新增的項目
-                    selectElement.value = newItem;
+                    // 重新整理 UI
+                    const containerId = dictKey === 'GROUP_DICT' ? 'custom-groups' : 'custom-actions';
+                    refreshCustomSelect(dictKey, containerId);
+                    // 自動選中剛新增的值
+                    select.value = newValue;
                 } else {
-                    selectElement.value = ""; // 取消選擇
+                    select.value = ""; // 若取消則歸零
                 }
             }
         }
 
-        // 載入自定義項目到選單中
-        function loadCustomOptions(storageKey, targetElementId) {
-            const customList = JSON.parse(localStorage.getItem(storageKey) || '[]');
-            const container = document.getElementById(targetElementId);
-            container.innerHTML = customList.map(item => `<option value="${item}">${item}</option>`).join('');
+        // 重新繪製自定義選單內容
+        function refreshCustomSelect(dictKey, containerId) {
+            const dict = JSON.parse(localStorage.getItem(dictKey) || "[]");
+            const container = document.getElementById(containerId);
+            container.innerHTML = dict.map(item => `<option value="${item}">${item}</option>`).join('');
         }
 
-        // 同步檢查機制
-        setInterval(() => {
-            const data = localStorage.getItem(KEY);
-            if (!data || data === '[]') { if (path.length > 0) { path = []; render(); } }
-        }, 500);
-
+        // 地圖切換與座標處理 (維持原邏輯)
         function changeMap(id) {
             document.querySelectorAll('.map-image').forEach(img => img.classList.remove('active'));
             document.getElementById(id).classList.add('active');
@@ -150,8 +143,7 @@
         function save() {
             const group = document.getElementById('group-type').value;
             const action = document.getElementById('action-select').value;
-            if(!group) { alert("請選擇組別！"); return; }
-            if(!action) { alert("請選擇行為項目！"); return; }
+            if(!group || !action) { alert("請填寫組別與行為！"); return; }
 
             const point = { 
                 id: document.getElementById('sid').value || '未編號',
@@ -160,12 +152,12 @@
                 action: action,
                 map: document.getElementById('map-select').options[document.getElementById('map-select').selectedIndex].text,
                 x: tempCoord.x, y: tempCoord.y,
-                time: new Date().toLocaleTimeString()
+                time: new Date().toISOString() // 使用 ISO 格式方便報表篩選
             };
             path.push(point);
-            const all = JSON.parse(localStorage.getItem(KEY) || '[]');
+            const all = JSON.parse(localStorage.getItem(DATA_KEY) || '[]');
             all.unshift(point);
-            localStorage.setItem(KEY, JSON.stringify(all));
+            localStorage.setItem(DATA_KEY, JSON.stringify(all));
             tempCoord = null;
             document.getElementById('save-btn').disabled = true;
             render();
