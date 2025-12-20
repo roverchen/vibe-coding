@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>海生館研究紀錄系統 - 精準點位版</title>
+    <title>海生館研究紀錄系統 - 操作優化版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #map-container { position: relative; display: inline-block; cursor: crosshair; border: 2px solid #cbd5e1; width: 100%; border-radius: 12px; background: #f8fafc; overflow: hidden; }
@@ -17,7 +17,7 @@
 </head>
 <body class="bg-slate-50 p-4">
     <div class="max-w-[1300px] mx-auto">
-        <header class="flex justify-between items-center mb-6 bg-white p-5 rounded-2xl shadow-sm border">
+        <header class="flex justify-between items-center mb-6 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
             <div>
                 <h1 class="text-2xl font-black text-slate-800 tracking-tight">🔴 現場紀錄模式</h1>
                 <p id="status-bar" class="text-xs text-indigo-600 font-bold mt-1">系統就緒</p>
@@ -32,7 +32,7 @@
                 
                 <div class="bg-white p-4 rounded-xl shadow-sm border">
                     <label class="block text-xs font-black text-indigo-600 mb-2 uppercase">1. 選擇館區</label>
-                    <select id="map-select" onchange="changeMap(this.value)" class="w-full p-2.5 border rounded-lg bg-slate-50 text-sm font-bold">
+                    <select id="map-select" onchange="changeMap(this.value)" class="w-full p-2.5 border rounded-lg bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-indigo-500">
                         <option value="map1">臺灣水域館</option>
                         <option value="map2">珊瑚王國館</option>
                         <option value="map3">世界水域館 1,2F</option>
@@ -43,54 +43,52 @@
                 <div class="bg-white p-4 rounded-xl shadow-sm border space-y-4">
                     <label class="block text-xs font-black text-slate-500 uppercase">2. 觀察對象資訊</label>
                     
-                    <div class="flex gap-2 items-end">
-                        <div class="flex-1">
-                            <label class="text-[10px] font-bold text-slate-400">個案編號</label>
-                            <input type="text" id="sid" class="w-full p-2 border rounded-lg text-sm font-bold text-indigo-700 bg-slate-50">
-                        </div>
-                        <button onclick="autoGenerateID()" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md">下一組</button>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-slate-400">個案編號</label>
+                        <input type="text" id="sid" class="w-full p-2 border rounded-lg text-sm font-bold text-indigo-700 bg-slate-50 outline-none">
                     </div>
 
-                    <div>
+                    <div class="space-y-1">
                         <label class="text-[10px] font-bold text-slate-400">成員組合</label>
-                        <select id="group-type" onchange="handleDynamicSelect(this, 'CUSTOM_GROUPS')" class="w-full p-2 border rounded-lg text-sm bg-amber-50">
+                        <select id="group-type" onchange="handleDynamicSelect(this, 'CUSTOM_GROUPS')" class="w-full p-2 border rounded-lg text-sm bg-amber-50 focus:ring-2 focus:ring-amber-200 outline-none">
                             <option value="">-- 選擇成員組合 --</option>
                             <option value="1A1C">1大1小 (1A1C)</option>
                             <option value="1A2C">1大2小 (1A2C)</option>
                             <option value="2A1C">2大1小 (2A1C)</option>
                             <option value="2A2C">2大2小 (2A2C)</option>
                             <optgroup label="自定義" id="custom-group-list"></optgroup>
-                            <option value="ADD_NEW" class="text-indigo-600 font-bold">+ 新增項目...</option>
+                            <option value="ADD_NEW" class="text-indigo-600 font-bold">+ 新增成員組合...</option>
                         </select>
                     </div>
 
-                    <hr class="border-slate-100">
+                    <button onclick="finishAndNext()" class="w-full bg-slate-800 text-white py-3 rounded-xl text-sm font-black hover:bg-black transition-all shadow-md active:scale-95 flex items-center justify-center gap-2">
+                        <span>⏭️ 完成本組 / 下一組個案</span>
+                        <span class="text-[10px] font-normal opacity-60">(自動跳號並清除畫布)</span>
+                    </button>
 
                     <div id="location-name-box" class="p-3 bg-indigo-50 rounded-xl border border-indigo-100 hidden">
-                        <label class="block text-[10px] font-bold text-indigo-400 mb-1 italic">偵測到點位：可修改位置名稱</label>
-                        <input type="text" id="location-name" placeholder="位置名稱 (例：大洋池)" class="w-full p-2 border border-indigo-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-indigo-500">
+                        <label class="block text-[10px] font-bold text-indigo-400 mb-1 italic">📍 偵測到點位：可修改位置名稱</label>
+                        <input type="text" id="location-name" placeholder="位置名稱 (例：大洋池)" class="w-full p-2 border border-indigo-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none">
                     </div>
 
-                    <div>
+                    <div class="space-y-1">
                         <label class="text-[10px] font-bold text-slate-400">觀眾行為</label>
-                        <select id="action-select" onchange="handleDynamicSelect(this, 'CUSTOM_ACTIONS')" class="w-full p-2 border rounded-lg text-sm">
+                        <select id="action-select" onchange="handleDynamicSelect(this, 'CUSTOM_ACTIONS')" class="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                             <option value="">-- 選擇行為類型 --</option>
                             <option value="共同參與">共同參與</option>
                             <option value="引導說明">引導說明</option>
                             <option value="拍照錄影">拍照錄影</option>
                             <option value="休息等待">休息等待</option>
                             <optgroup label="自定義" id="custom-action-list"></optgroup>
-                            <option value="ADD_NEW" class="text-indigo-600 font-bold">+ 新增項目...</option>
+                            <option value="ADD_NEW" class="text-indigo-600 font-bold">+ 新增行為項目...</option>
                         </select>
                     </div>
                     
                     <div class="bg-slate-50 p-4 rounded-xl border border-dashed text-center">
-                        <button id="save-btn" onclick="save()" disabled class="w-full bg-indigo-600 text-white py-4 rounded-xl font-black shadow-lg disabled:bg-slate-200 transition-all">
-                            📍 儲存此紀錄點
+                        <button id="save-btn" onclick="save()" disabled class="w-full bg-indigo-600 text-white py-4 rounded-xl font-black shadow-lg disabled:bg-slate-200 transition-all active:scale-95">
+                            📌 儲存此紀錄點
                         </button>
                     </div>
-
-                    <button onclick="if(confirm('確定清除畫布？')){path=[];render();}" class="w-full py-2 text-xs font-bold text-rose-400">🧹 清除畫布線條</button>
                 </div>
             </div>
             
@@ -113,18 +111,30 @@
         window.onload = () => {
             loadCustomOptions('CUSTOM_GROUPS', 'custom-group-list');
             loadCustomOptions('CUSTOM_ACTIONS', 'custom-action-list');
-            autoGenerateID();
+            refreshID();
         };
 
-        function autoGenerateID() {
+        // 功能：初始化或刷新編號，不主動清空畫布
+        function refreshID() {
             const allData = JSON.parse(localStorage.getItem(KEY) || '[]');
             const numbers = allData.map(d => {
                 const m = d.id.match(/A(\d+)/);
                 return m ? parseInt(m[1]) : 0;
             });
             document.getElementById('sid').value = "A" + (Math.max(0, ...numbers) + 1).toString().padStart(2, '0');
-            path = []; render();
+        }
+
+        // 功能：結合按鈕 - 完成本組並跳號、清除畫布
+        function finishAndNext() {
+            if (path.length > 0 && !confirm("確定結束目前的觀察並開始新個案嗎？(將清空畫布線條)")) return;
+            
+            refreshID();
+            path = []; 
+            tempCoord = null;
+            render();
             document.getElementById('location-name-box').classList.add('hidden');
+            document.getElementById('save-btn').disabled = true;
+            document.getElementById('status-bar').innerText = `已開啟新個案：${document.getElementById('sid').value}`;
         }
 
         const container = document.getElementById('map-container');
@@ -133,24 +143,20 @@
             let clickX = Math.round(e.clientX - rect.left);
             let clickY = Math.round(e.clientY - rect.top);
 
-            // --- 邏輯：檢查方圓 10px 內的點 ---
+            // 10px 範圍偵測邏輯
             const nearbyPoint = path.find(p => {
                 const dist = Math.sqrt(Math.pow(p.x - clickX, 2) + Math.pow(p.y - clickY, 2));
                 return dist <= 10;
             });
 
             if (nearbyPoint) {
-                // 如果在範圍內，自動對齊座標並抓取名稱
                 tempCoord = { x: nearbyPoint.x, y: nearbyPoint.y, locName: nearbyPoint.locName || "" };
                 document.getElementById('location-name').value = nearbyPoint.locName || "";
-                document.getElementById('status-bar').innerText = "已自動對齊至原有位置";
             } else {
                 tempCoord = { x: clickX, y: clickY, locName: "" };
                 document.getElementById('location-name').value = "";
-                document.getElementById('status-bar').innerText = "已標記新位置";
             }
 
-            // 顯示命名欄位
             document.getElementById('location-name-box').classList.remove('hidden');
             document.getElementById('save-btn').disabled = false;
             render();
@@ -160,23 +166,21 @@
             const sid = document.getElementById('sid').value;
             const group = document.getElementById('group-type').value;
             const action = document.getElementById('action-select').value;
-            const locName = document.getElementById('location-name').value; // 獲取自定義位置名稱
+            const locName = document.getElementById('location-name').value;
 
             if(!group || !action) { alert("請填妥成員組合與行為！"); return; }
 
             const point = { 
                 id: sid, group: group, action: action,
-                locName: locName, // 儲存位置名稱
+                locName: locName,
                 seq: path.length + 1,
                 map: document.getElementById('map-select').options[document.getElementById('map-select').selectedIndex].text,
                 x: tempCoord.x, y: tempCoord.y,
                 time: new Date().toISOString()
             };
             
-            // 同步更新 path 中所有座標相同的點的名稱 (實現 10px 範圍內同一名稱)
-            path.forEach(p => {
-                if (p.x === tempCoord.x && p.y === tempCoord.y) p.locName = locName;
-            });
+            // 同步更新 10px 同一座標點的名稱
+            path.forEach(p => { if (p.x === tempCoord.x && p.y === tempCoord.y) p.locName = locName; });
 
             path.push(point);
             const all = JSON.parse(localStorage.getItem(KEY) || '[]');
@@ -186,24 +190,22 @@
             tempCoord = null;
             document.getElementById('save-btn').disabled = true;
             document.getElementById('location-name-box').classList.add('hidden');
+            document.getElementById('status-bar').innerText = `點位儲存成功 (${sid})`;
             render();
         }
 
+        // 下列輔助功能維持原樣
         function render() {
             container.querySelectorAll('.marker, .path-line, .marker-label').forEach(el => el.remove());
             path.forEach((p, i) => {
-                // 標記點
                 const m = document.createElement('div'); m.className = 'marker';
                 m.style.left = p.x+'px'; m.style.top = p.y+'px';
                 m.innerText = p.seq; container.appendChild(m);
-                
-                // 位置標籤
                 if (p.locName) {
                     const l = document.createElement('div'); l.className = 'marker-label';
                     l.style.left = p.x+'px'; l.style.top = p.y+'px';
                     l.innerText = p.locName; container.appendChild(l);
                 }
-                
                 if (i > 0) drawLine(path[i-1], p);
             });
             if (tempCoord) {
@@ -221,7 +223,6 @@
             l.style.transform = `rotate(${a}deg)`; container.appendChild(l);
         }
 
-        // 自定義選項邏輯維持不變
         function handleDynamicSelect(select, key) {
             if (select.value === 'ADD_NEW') {
                 const n = prompt("輸入新名稱:");
@@ -233,10 +234,12 @@
                 } else select.value = "";
             }
         }
+
         function loadCustomOptions(k, id) {
             const l = JSON.parse(localStorage.getItem(k) || '[]');
             document.getElementById(id).innerHTML = l.map(i => `<option value="${i}">${i}</option>`).join('');
         }
+
         function changeMap(id) {
             document.querySelectorAll('.map-image').forEach(img => img.classList.remove('active'));
             document.getElementById(id).classList.add('active');
